@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { StudentAccount, Student } from '@/types/models'
-import { Loader2, Eye, DollarSign } from 'lucide-react'
+import { StudentAccount } from '@/types/models'
+import { Loader2, DollarSign } from 'lucide-react'
 
 interface StudentAccountWithDetails extends StudentAccount {
   student_name: string
