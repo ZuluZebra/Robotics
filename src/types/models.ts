@@ -123,6 +123,7 @@ export interface AttendanceAlert {
 }
 
 export interface AttendanceAlertWithDetails extends AttendanceAlert {
+  alert_id: string
   student_name: string
   grade: string
   parent_name?: string
