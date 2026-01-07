@@ -140,20 +140,16 @@ export function AttendanceForm() {
       }))
 
       // Delete existing records for this class and date
-      const { error: deleteError } = await supabase
+      await supabase
         .from('attendance_records')
         .delete()
         .eq('class_id', selectedClass)
         .eq('attendance_date', today)
 
-      if (deleteError) throw deleteError
-
       // Insert new records
-      const { error: insertError } = await supabase
+      await supabase
         .from('attendance_records')
         .insert(attendanceData)
-
-      if (insertError) throw insertError
 
       toast.success(
         `Attendance marked for ${students.length} students!`
