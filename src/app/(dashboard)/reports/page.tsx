@@ -5,6 +5,14 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   BarChart,
   Bar,
@@ -18,6 +26,8 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { toast } from 'sonner'
+import { Download } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,59 +39,142 @@ interface ClassStats {
   total: number
 }
 
+interface AttendanceRecord {
+  id: string
+  attendance_date: string
+  student_name: string
+  class_name: string
+  school_name: string
+  status: string
+  absence_reason?: string
+  comments?: string
+}
+
+interface School {
+  id: string
+  name: string
+}
+
+interface Class {
+  id: string
+  name: string
+  school_id: string
+}
+
+interface Student {
+  id: string
+  first_name: string
+  last_name: string
+  class_id: string
+}
+
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [classStats, setClassStats] = useState<ClassStats[]>([])
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [schools, setSchools] = useState<School[]>([])
+  const [classes, setClasses] = useState<Class[]>([])
+  const [students, setStudents] = useState<Student[]>([])
+
   const [dateRange, setDateRange] = useState({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0],
   })
+
+  const [selectedSchool, setSelectedSchool] = useState<string>('')
+  const [selectedClass, setSelectedClass] = useState<string>('')
+  const [selectedStudent, setSelectedStudent] = useState<string>('')
+
   const supabase = createClient()
 
+  // Fetch lookup data on mount
+  useEffect(() => {
+    const fetchLookupData = async () => {
+      try {
+        const [schoolsRes, classesRes, studentsRes] = await Promise.all([
+          supabase.from('schools').select('id, name').eq('is_active', true),
+          supabase.from('classes').select('id, name, school_id').eq('is_active', true),
+          supabase.from('students').select('id, first_name, last_name, class_id'),
+        ])
+
+        if (schoolsRes.data) setSchools(schoolsRes.data)
+        if (classesRes.data) setClasses(classesRes.data)
+        if (studentsRes.data) setStudents(studentsRes.data)
+      } catch (error) {
+        console.error('Error fetching lookup data:', error)
+      }
+    }
+
+    fetchLookupData()
+  }, [supabase])
+
+  // Fetch attendance data and calculate stats
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('attendance_records')
-          .select('*')
+          .select(
+            '*, students(first_name, last_name), classes(name, school_id, schools(name))'
+          )
           .gte('attendance_date', dateRange.start)
           .lte('attendance_date', dateRange.end)
 
-        if (error) throw error
-
-        // Group by class and calculate stats
-        const statsMap: Record<string, ClassStats> = {}
-
-        // First get all classes
-        const { data: classesData } = await supabase
-          .from('classes')
-          .select('id, name')
-
-        if (classesData) {
-          classesData.forEach((cls) => {
-            statsMap[cls.id] = {
-              class_name: cls.name,
-              attendance_percentage: 0,
-              present_count: 0,
-              absent_count: 0,
-              total: 0,
-            }
-          })
+        // Apply filters
+        if (selectedSchool) {
+          query = query.eq('classes.school_id', selectedSchool)
+        }
+        if (selectedClass) {
+          query = query.eq('class_id', selectedClass)
+        }
+        if (selectedStudent) {
+          query = query.eq('student_id', selectedStudent)
         }
 
-        // Process attendance records
-        data?.forEach((record) => {
-          if (statsMap[record.class_id]) {
-            if (record.status === 'present') {
-              statsMap[record.class_id].present_count++
-            } else {
-              statsMap[record.class_id].absent_count++
-            }
-            statsMap[record.class_id].total++
+        const { data, error } = await query
+
+        if (error) throw error
+
+        // Transform data for display
+        const records: AttendanceRecord[] = data?.map((record: any) => ({
+          id: record.id,
+          attendance_date: record.attendance_date,
+          student_name: `${record.students?.first_name || ''} ${record.students?.last_name || ''}`.trim(),
+          class_name: record.classes?.name || 'Unknown',
+          school_name: record.classes?.schools?.name || 'Unknown',
+          status: record.status,
+          absence_reason: record.absence_reason,
+          comments: record.comments,
+        })) || []
+
+        setAttendanceRecords(records)
+
+        // Calculate class stats for charts
+        const statsMap: Record<string, ClassStats> = {}
+        classes.forEach((cls) => {
+          statsMap[cls.id] = {
+            class_name: cls.name,
+            attendance_percentage: 0,
+            present_count: 0,
+            absent_count: 0,
+            total: 0,
           }
         })
 
-        // Calculate percentages
+        records.forEach((record) => {
+          const classId = Object.keys(statsMap).find(
+            (id) => statsMap[id].class_name === record.class_name
+          )
+          if (classId && statsMap[classId]) {
+            if (record.status === 'present') {
+              statsMap[classId].present_count++
+            } else {
+              statsMap[classId].absent_count++
+            }
+            statsMap[classId].total++
+          }
+        })
+
         Object.keys(statsMap).forEach((classId) => {
           const stats = statsMap[classId]
           if (stats.total > 0) {
@@ -102,7 +195,32 @@ export default function ReportsPage() {
 
     setLoading(true)
     fetchStats()
-  }, [dateRange, supabase])
+  }, [dateRange, selectedSchool, selectedClass, selectedStudent, supabase, classes])
+
+  const handleExportToExcel = () => {
+    if (attendanceRecords.length === 0) {
+      toast.error('No data to export')
+      return
+    }
+
+    const data = attendanceRecords.map((record) => ({
+      Date: record.attendance_date,
+      'Student Name': record.student_name,
+      School: record.school_name,
+      Class: record.class_name,
+      Status: record.status.charAt(0).toUpperCase() + record.status.slice(1),
+      'Absence Reason': record.absence_reason || '—',
+      Comments: record.comments || '—',
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance')
+
+    const filename = `attendance-report-${dateRange.start}-to-${dateRange.end}.xlsx`
+    XLSX.writeFile(wb, filename)
+    toast.success('Report exported successfully!')
+  }
 
   const overallPercentage = classStats.length > 0
     ? Math.round(
@@ -133,33 +251,105 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      {/* Date Range Filter */}
+      {/* Filters Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Date Range</CardTitle>
+          <CardTitle>Filters</CardTitle>
+          <CardDescription>Filter attendance records by date, school, class, and student</CardDescription>
         </CardHeader>
-        <CardContent className="flex gap-4">
-          <div>
-            <Label htmlFor="start-date">Start Date</Label>
-            <Input
-              id="start-date"
-              type="date"
-              value={dateRange.start}
-              onChange={(e) =>
-                setDateRange({ ...dateRange, start: e.target.value })
-              }
-            />
-          </div>
-          <div>
-            <Label htmlFor="end-date">End Date</Label>
-            <Input
-              id="end-date"
-              type="date"
-              value={dateRange.end}
-              onChange={(e) =>
-                setDateRange({ ...dateRange, end: e.target.value })
-              }
-            />
+        <CardContent>
+          <div className="space-y-4">
+            {/* Date Range */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start-date">Start Date</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) =>
+                    setDateRange({ ...dateRange, start: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="end-date">End Date</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) =>
+                    setDateRange({ ...dateRange, end: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            {/* School, Class, Student Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="school-filter">School</Label>
+                <Select value={selectedSchool} onValueChange={setSelectedSchool}>
+                  <SelectTrigger id="school-filter">
+                    <SelectValue placeholder="All Schools" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Schools</SelectItem>
+                    {schools.map((school) => (
+                      <SelectItem key={school.id} value={school.id}>
+                        {school.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="class-filter">Class</Label>
+                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                  <SelectTrigger id="class-filter">
+                    <SelectValue placeholder="All Classes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Classes</SelectItem>
+                    {classes
+                      .filter((cls) => !selectedSchool || cls.school_id === selectedSchool)
+                      .map((cls) => (
+                        <SelectItem key={cls.id} value={cls.id}>
+                          {cls.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="student-filter">Person Absent</Label>
+                <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                  <SelectTrigger id="student-filter">
+                    <SelectValue placeholder="All Students" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Students</SelectItem>
+                    {students
+                      .filter((student) => !selectedClass || student.class_id === selectedClass)
+                      .map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.first_name} {student.last_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Export Button */}
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={handleExportToExcel} className="gap-2">
+                <Download className="h-4 w-4" />
+                Export to Excel
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -319,6 +509,62 @@ export default function ReportsPage() {
                             {stat.attendance_percentage}%
                           </span>
                         </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Detailed Attendance Records */}
+      {attendanceRecords.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance Records</CardTitle>
+            <CardDescription>
+              {attendanceRecords.length} record{attendanceRecords.length !== 1 ? 's' : ''} matching filters
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b bg-gray-50">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold">Date</th>
+                    <th className="text-left py-3 px-4 font-semibold">Student</th>
+                    <th className="text-left py-3 px-4 font-semibold">School</th>
+                    <th className="text-left py-3 px-4 font-semibold">Class</th>
+                    <th className="text-left py-3 px-4 font-semibold">Status</th>
+                    <th className="text-left py-3 px-4 font-semibold">Reason</th>
+                    <th className="text-left py-3 px-4 font-semibold">Comments</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendanceRecords.map((record) => (
+                    <tr key={record.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4 text-xs">{record.attendance_date}</td>
+                      <td className="py-3 px-4">{record.student_name}</td>
+                      <td className="py-3 px-4">{record.school_name}</td>
+                      <td className="py-3 px-4">{record.class_name}</td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-semibold ${
+                            record.status === 'present'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {record.absence_reason || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {record.comments || '—'}
                       </td>
                     </tr>
                   ))}
