@@ -8,8 +8,6 @@ import { Label } from '@/components/ui/label'
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
