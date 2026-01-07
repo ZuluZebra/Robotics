@@ -6,26 +6,53 @@ import { ClassForm } from '@/components/admin/class-form'
 import { DataTable } from '@/components/admin/data-table'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Class } from '@/types/models'
+import { Class, School } from '@/types/models'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { formatSchedule, formatTime } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
 export default function ClassesPage() {
+  const [schools, setSchools] = useState<School[]>([])
   const [classes, setClasses] = useState<Class[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedClass, setSelectedClass] = useState<Class | null>(null)
+  const [selectedSchool, setSelectedSchool] = useState<string>('')
   const supabase = createClient()
 
-  const fetchClasses = async () => {
+  // Fetch schools
+  const fetchSchools = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+      const schoolsData = data || []
+      setSchools(schoolsData)
+
+      // Auto-select first school
+      if (schoolsData.length > 0 && !selectedSchool) {
+        setSelectedSchool(schoolsData[0].id)
+      }
+    } catch (error) {
+      console.error('Error fetching schools:', error)
+      toast.error('Failed to load schools')
+    }
+  }
+
+  // Fetch classes for selected school
+  const fetchClasses = async (schoolId: string) => {
     try {
       const { data, error } = await supabase
         .from('classes')
         .select('*')
+        .eq('school_id', schoolId)
         .order('name')
 
       if (error) throw error
@@ -38,9 +65,18 @@ export default function ClassesPage() {
     }
   }
 
+  // Fetch schools on mount
   useEffect(() => {
-    fetchClasses()
+    fetchSchools()
   }, [supabase])
+
+  // Fetch classes when selected school changes
+  useEffect(() => {
+    if (selectedSchool) {
+      setLoading(true)
+      fetchClasses(selectedSchool)
+    }
+  }, [selectedSchool])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this class?')) return
@@ -53,7 +89,9 @@ export default function ClassesPage() {
 
       if (error) throw error
       toast.success('Class deleted successfully!')
-      fetchClasses()
+      if (selectedSchool) {
+        fetchClasses(selectedSchool)
+      }
     } catch (error) {
       console.error('Error deleting class:', error)
       toast.error('Failed to delete class')
@@ -63,8 +101,12 @@ export default function ClassesPage() {
   const handleSuccess = () => {
     setShowForm(false)
     setSelectedClass(null)
-    fetchClasses()
+    if (selectedSchool) {
+      fetchClasses(selectedSchool)
+    }
   }
+
+  const selectedSchoolData = schools.find((s) => s.id === selectedSchool)
 
   return (
     <div className="space-y-8">
@@ -84,6 +126,25 @@ export default function ClassesPage() {
         </Button>
       </div>
 
+      {/* School Selector */}
+      {schools.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-gray-700">Select School</h2>
+          <div className="flex gap-2 flex-wrap">
+            {schools.map((school) => (
+              <Button
+                key={school.id}
+                variant={selectedSchool === school.id ? 'default' : 'outline'}
+                onClick={() => setSelectedSchool(school.id)}
+                className="min-w-[120px]"
+              >
+                {school.name}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-2xl">
@@ -91,6 +152,9 @@ export default function ClassesPage() {
             <DialogTitle>
               {selectedClass ? 'Edit Class' : 'Create Class'}
             </DialogTitle>
+            <DialogDescription>
+              {selectedClass ? 'Update class information and assignments' : 'Add a new class to the selected school'}
+            </DialogDescription>
           </DialogHeader>
           <ClassForm
             schoolClass={selectedClass || undefined}
@@ -104,13 +168,14 @@ export default function ClassesPage() {
       </Dialog>
 
       {/* Classes Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Classes</CardTitle>
-          <CardDescription>
-            {classes.length} class{classes.length !== 1 ? 'es' : ''} in the system
-          </CardDescription>
-        </CardHeader>
+      {selectedSchoolData && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{selectedSchoolData.name}</CardTitle>
+            <CardDescription>
+              {classes.length} class{classes.length !== 1 ? 'es' : ''}
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           <DataTable
             columns={[
@@ -161,6 +226,7 @@ export default function ClassesPage() {
           />
         </CardContent>
       </Card>
+      )}
     </div>
   )
 }
