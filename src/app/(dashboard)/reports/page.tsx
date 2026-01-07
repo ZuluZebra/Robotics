@@ -294,7 +294,6 @@ export default function ReportsPage() {
                     <SelectValue placeholder="All Schools" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Schools</SelectItem>
                     {schools.map((school) => (
                       <SelectItem key={school.id} value={school.id}>
                         {school.name}
@@ -311,7 +310,6 @@ export default function ReportsPage() {
                     <SelectValue placeholder="All Classes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Classes</SelectItem>
                     {classes
                       .filter((cls) => !selectedSchool || cls.school_id === selectedSchool)
                       .map((cls) => (
@@ -330,7 +328,6 @@ export default function ReportsPage() {
                     <SelectValue placeholder="All Students" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Students</SelectItem>
                     {students
                       .filter((student) => !selectedClass || student.class_id === selectedClass)
                       .map((student) => (
