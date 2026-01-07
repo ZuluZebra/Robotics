@@ -36,6 +36,11 @@ export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) 
     setLoading(true)
 
     try {
+      // Validation
+      if (!formData.full_name.trim()) {
+        throw new Error('Full name is required')
+      }
+
       if (teacher?.id) {
         // Update existing teacher
         const { error: updateError } = await supabase
@@ -49,9 +54,23 @@ export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) 
         if (updateError) throw updateError
         toast.success('Teacher updated successfully!')
       } else {
-        // Create new teacher account
+        // Create new teacher account - validate all fields
+        if (!formData.email.trim()) {
+          throw new Error('Email is required')
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.email)) {
+          throw new Error('Please enter a valid email address')
+        }
+
         if (!formData.password) {
-          throw new Error('Password is required for new teachers')
+          throw new Error('Password is required')
+        }
+
+        if (formData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters long')
         }
 
         // Sign up with Supabase Auth
