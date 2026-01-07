@@ -13,11 +13,12 @@ import { Loader2 } from 'lucide-react'
 
 interface TeacherFormProps {
   teacher?: UserProfile
+  userRole?: 'admin' | 'teacher'
   onSuccess: () => void
   onCancel: () => void
 }
 
-export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) {
+export function TeacherForm({ teacher, userRole = 'teacher', onSuccess, onCancel }: TeacherFormProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: teacher?.email || '',
@@ -85,7 +86,7 @@ export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) 
         if (authError) throw authError
         if (!authData.user?.id) throw new Error('Failed to create auth user')
 
-        // Create user profile for the new teacher
+        // Create user profile for the new user
         const { error: profileError } = await supabase
           .from('user_profiles')
           .insert([
@@ -94,12 +95,13 @@ export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) 
               email: formData.email,
               full_name: formData.full_name,
               phone: formData.phone,
-              role: 'teacher',
+              role: userRole,
             },
           ])
 
         if (profileError) throw profileError
-        toast.success('Teacher created successfully!')
+        const successMsg = userRole === 'admin' ? 'Admin created successfully!' : 'Teacher created successfully!'
+        toast.success(successMsg)
       }
 
       onSuccess()
@@ -114,9 +116,13 @@ export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{teacher ? 'Edit Teacher' : 'Create Teacher'}</CardTitle>
+        <CardTitle>
+          {teacher ? 'Edit' : 'Create'} {userRole === 'admin' ? 'Admin' : 'Teacher'}
+        </CardTitle>
         <CardDescription>
-          {teacher ? 'Update teacher information' : 'Add a new teacher to the system'}
+          {teacher
+            ? (userRole === 'admin' ? 'Update admin information' : 'Update teacher information')
+            : (userRole === 'admin' ? 'Add a new admin to the system' : 'Add a new teacher to the system')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -178,35 +184,37 @@ export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) 
             </div>
           )}
 
-          <div className="space-y-3 border-t pt-4">
-            <Label>Privileges</Label>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="can_mark_attendance"
-                  checked={privileges.can_mark_attendance}
-                  onCheckedChange={(checked) =>
-                    setPrivileges({ ...privileges, can_mark_attendance: checked as boolean })
-                  }
-                />
-                <Label htmlFor="can_mark_attendance" className="font-normal cursor-pointer">
-                  Can mark attendance
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="can_view_reports"
-                  checked={privileges.can_view_reports}
-                  onCheckedChange={(checked) =>
-                    setPrivileges({ ...privileges, can_view_reports: checked as boolean })
-                  }
-                />
-                <Label htmlFor="can_view_reports" className="font-normal cursor-pointer">
-                  Can view reports
-                </Label>
+          {userRole === 'teacher' && (
+            <div className="space-y-3 border-t pt-4">
+              <Label>Privileges</Label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="can_mark_attendance"
+                    checked={privileges.can_mark_attendance}
+                    onCheckedChange={(checked) =>
+                      setPrivileges({ ...privileges, can_mark_attendance: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="can_mark_attendance" className="font-normal cursor-pointer">
+                    Can mark attendance
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="can_view_reports"
+                    checked={privileges.can_view_reports}
+                    onCheckedChange={(checked) =>
+                      setPrivileges({ ...privileges, can_view_reports: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="can_view_reports" className="font-normal cursor-pointer">
+                    Can view reports
+                  </Label>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="flex gap-4 pt-4">
             <Button type="submit" disabled={loading}>
@@ -216,7 +224,7 @@ export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) 
                   Saving...
                 </>
               ) : (
-                'Save Teacher'
+                'Save ' + (userRole === 'admin' ? 'Admin' : 'Teacher')
               )}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>
