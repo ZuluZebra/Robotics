@@ -173,10 +173,10 @@ export default function StudentsPage() {
                       </div>
                     </div>
                   </div>
-                  {selectedStudent.notes && (
+                  {selectedStudent.medical_notes && (
                     <div className="mt-6 pt-6 border-t">
-                      <h3 className="font-semibold text-gray-900 mb-2">Notes</h3>
-                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{selectedStudent.notes}</p>
+                      <h3 className="font-semibold text-gray-900 mb-2">Medical Notes</h3>
+                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{selectedStudent.medical_notes}</p>
                     </div>
                   )}
                 </CardContent>
