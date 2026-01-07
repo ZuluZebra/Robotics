@@ -67,6 +67,8 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
     if (!file) return
 
     const fileName = file.name.toLowerCase()
+    console.log('File selected:', fileName)
+    toast.loading('Reading file...')
 
     if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
       handleXlsxUpload(file)
@@ -78,35 +80,49 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
   }
 
   const handleCsvUpload = (file: File) => {
+    console.log('Parsing CSV file...')
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
+        console.log('CSV parsed, rows:', results.data.length)
         await importStudents(results.data as any[])
       },
-      error: () => {
+      error: (error) => {
+        console.error('CSV parse error:', error)
         toast.error('Failed to parse CSV file')
       },
     })
   }
 
   const handleXlsxUpload = (file: File) => {
+    console.log('Reading Excel file...')
     const reader = new FileReader()
     reader.onload = async (e) => {
       try {
         const data = e.target?.result
+        console.log('File read, parsing workbook...')
         const workbook = XLSX.read(data, { type: 'binary' })
+        console.log('Sheets:', workbook.SheetNames)
         const worksheet = workbook.Sheets[workbook.SheetNames[0]]
         const rows = XLSX.utils.sheet_to_json(worksheet)
+        console.log('Excel parsed, rows:', rows.length)
         await importStudents(rows as any[])
       } catch (error) {
+        console.error('Excel parse error:', error)
         toast.error('Failed to parse Excel file')
       }
+    }
+    reader.onerror = () => {
+      console.error('File read error')
+      toast.error('Failed to read file')
     }
     reader.readAsBinaryString(file)
   }
 
   const importStudents = async (data: any[]) => {
+    console.log('Starting import with', data.length, 'rows')
+
     if (data.length === 0) {
       toast.error('No data found in file')
       return
@@ -114,21 +130,26 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
 
     // Detect column format
     const firstRow = data[0]
+    console.log('First row columns:', Object.keys(firstRow))
     const hasStudentNameColumn = 'Student Name' in firstRow || 'student_name' in firstRow
     const hasFirstNameColumn = 'first_name' in firstRow
 
     if (!hasFirstNameColumn && !hasStudentNameColumn) {
+      console.error('No student name column found')
       toast.error('Could not find student name columns. Use "first_name" and "last_name" or "Student Name"')
       return
     }
 
     // If using "Student Name" format and no class selected
     if (hasStudentNameColumn && !selectedClass) {
+      console.error('Excel format detected but no class selected')
       toast.error('Please select a class to import these students into')
       return
     }
 
+    console.log('Validation passed, starting import...')
     setLoading(true)
+    toast.loading('Importing students...')
     const errors: ImportResult['errors'] = []
     let successCount = 0
 
@@ -240,6 +261,8 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
         errors,
       })
 
+      console.log('Import complete:', { successCount, failed: errors.length })
+
       if (errors.length === 0) {
         toast.success(`Successfully imported ${successCount} students!`)
       } else {
@@ -247,6 +270,9 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
           `Imported ${successCount} students with ${errors.length} errors`
         )
       }
+    } catch (error) {
+      console.error('Import error:', error)
+      toast.error('Import failed: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setLoading(false)
       setFileKey((prev) => prev + 1)
