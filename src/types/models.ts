@@ -189,3 +189,34 @@ export interface BulkImportResult {
     data: Record<string, unknown>
   }>
 }
+
+export interface TeacherClassWithDetails extends TeacherClass {
+  class_name: string
+  school_name: string
+  grade: string
+}
+
+export interface TeacherWithClasses extends UserProfile {
+  assigned_classes?: TeacherClassWithDetails[]
+}
+
+export interface TeacherStudentAbsences {
+  teacher_id: string
+  class_id: string
+  teacher_name: string
+  class_name: string
+  school_name: string
+  student_id: string
+  student_name: string
+  total_absences: number
+  first_absence_date?: string
+  last_absence_date?: string
+}
+
+export interface ClassStats {
+  class_name: string
+  attendance_percentage: number
+  present_count: number
+  absent_count: number
+  total: number
+}

@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { UserProfile } from '@/types/models'
+import { UserProfile, Class } from '@/types/models'
 
 export function useAuth() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [assignedClasses, setAssignedClasses] = useState<Class[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -31,6 +32,20 @@ export function useAuth() {
             console.error('Error fetching profile:', profileError)
           } else {
             setProfile(profileData as UserProfile)
+
+            // Fetch assigned classes if user is a teacher
+            if (profileData.role === 'teacher') {
+              const { data: classesData, error: classesError } = await supabase
+                .from('teacher_classes')
+                .select('class_id, classes (*)')
+                .eq('teacher_id', user.id)
+
+              if (classesError) {
+                console.error('Error fetching teacher classes:', classesError)
+              } else {
+                setAssignedClasses(classesData?.map((tc: any) => tc.classes) || [])
+              }
+            }
           }
         }
       } catch (err) {
@@ -51,6 +66,7 @@ export function useAuth() {
       if (error) throw error
       setUser(null)
       setProfile(null)
+      setAssignedClasses([])
       router.push('/login')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -60,6 +76,7 @@ export function useAuth() {
   }, [supabase, router])
 
   const isAdmin = profile?.role === 'admin'
+  const isTeacher = profile?.role === 'teacher'
   const isAuthenticated = !!user
 
   return {
@@ -69,6 +86,8 @@ export function useAuth() {
     error,
     logout,
     isAdmin,
+    isTeacher,
     isAuthenticated,
+    assignedClasses,
   }
 }

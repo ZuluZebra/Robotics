@@ -9,14 +9,17 @@ import { StudentRow } from './student-row'
 import { WeeklyStats } from './weekly-stats'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Student, AttendanceRecord } from '@/types/models'
 import { Loader2 } from 'lucide-react'
 
 export function AttendanceForm() {
-  const { user } = useAuth()
+  const { user, isAdmin, isTeacher, assignedClasses } = useAuth()
   const [selectedSchool, setSelectedSchool] = useState('')
   const [selectedClass, setSelectedClass] = useState('')
+  const [useTeacherMode, setUseTeacherMode] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<
     Record<string, AttendanceRecord>
@@ -31,6 +34,10 @@ export function AttendanceForm() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
+
+  // Determine if we should use teacher mode
+  const shouldUseTeacherMode = (useTeacherMode || isTeacher) && assignedClasses.length > 0
+  const isAdminTeacher = isAdmin && assignedClasses.length > 0
 
   // Fetch students when class changes
   useEffect(() => {
@@ -177,12 +184,26 @@ export function AttendanceForm() {
           <CardTitle>Select Class</CardTitle>
           <CardDescription>Choose a school and class to mark attendance</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {isAdminTeacher && (
+            <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+              <Switch
+                id="teacher-mode"
+                checked={useTeacherMode}
+                onCheckedChange={setUseTeacherMode}
+              />
+              <Label htmlFor="teacher-mode" className="cursor-pointer font-normal">
+                Show only my assigned classes
+              </Label>
+            </div>
+          )}
           <ClassSelector
             selectedSchool={selectedSchool}
             selectedClass={selectedClass}
             onSchoolChange={setSelectedSchool}
             onClassChange={setSelectedClass}
+            teacherMode={shouldUseTeacherMode}
+            assignedClasses={assignedClasses}
           />
         </CardContent>
       </Card>

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Class, School } from '@/types/models'
+import { Class, School, UserProfile } from '@/types/models'
 import { Loader2 } from 'lucide-react'
 
 interface ClassFormProps {
@@ -35,7 +35,9 @@ export function ClassForm({
 }: ClassFormProps) {
   const [loading, setLoading] = useState(false)
   const [schools, setSchools] = useState<School[]>([])
+  const [teachers, setTeachers] = useState<UserProfile[]>([])
   const [selectedSchool, setSelectedSchool] = useState(schoolId || '')
+  const [selectedTeachers, setSelectedTeachers] = useState<string[]>([])
   const [scheduleDays, setScheduleDays] = useState<string[]>(
     schoolClass?.schedule_days || []
   )
@@ -50,23 +52,44 @@ export function ClassForm({
   const supabase = createClient()
 
   useEffect(() => {
-    const fetchSchools = async () => {
+    const fetchData = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: schoolsData, error: schoolsError } = await supabase
           .from('schools')
           .select('*')
           .eq('is_active', true)
           .order('name')
 
-        if (error) throw error
-        setSchools(data || [])
+        if (schoolsError) throw schoolsError
+        setSchools(schoolsData || [])
+
+        const { data: teachersData, error: teachersError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('role', 'teacher')
+          .order('full_name')
+
+        if (teachersError) throw teachersError
+        setTeachers(teachersData || [])
+
+        // If editing, fetch currently assigned teachers
+        if (schoolClass?.id) {
+          const { data: assignedData, error: assignedError } = await supabase
+            .from('teacher_classes')
+            .select('teacher_id')
+            .eq('class_id', schoolClass.id)
+
+          if (!assignedError) {
+            setSelectedTeachers(assignedData?.map((item) => item.teacher_id) || [])
+          }
+        }
       } catch (error) {
-        console.error('Error fetching schools:', error)
+        console.error('Error fetching data:', error)
       }
     }
 
-    fetchSchools()
-  }, [supabase])
+    fetchData()
+  }, [supabase, schoolClass?.id])
 
   const handleDayToggle = (day: string) => {
     setScheduleDays((prev) =>
@@ -94,6 +117,8 @@ export function ClassForm({
         schedule_days: scheduleDays,
       }
 
+      let classId = schoolClass?.id
+
       if (schoolClass?.id) {
         // Update
         const { error } = await supabase
@@ -105,12 +130,34 @@ export function ClassForm({
         toast.success('Class updated successfully!')
       } else {
         // Create
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('classes')
           .insert([payload])
+          .select('id')
 
         if (error) throw error
+        classId = data?.[0]?.id
         toast.success('Class created successfully!')
+      }
+
+      // Handle teacher assignments
+      if (classId) {
+        // Delete existing assignments
+        await supabase.from('teacher_classes').delete().eq('class_id', classId)
+
+        // Insert new assignments
+        if (selectedTeachers.length > 0) {
+          const { error: insertError } = await supabase
+            .from('teacher_classes')
+            .insert(
+              selectedTeachers.map((teacherId) => ({
+                teacher_id: teacherId,
+                class_id: classId,
+              }))
+            )
+
+          if (insertError) throw insertError
+        }
       }
 
       onSuccess()
@@ -211,6 +258,34 @@ export function ClassForm({
                 onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                 placeholder="e.g., 30"
               />
+            </div>
+          </div>
+
+          <div>
+            <Label>Assign Teachers</Label>
+            <div className="space-y-2 mt-2 max-h-48 overflow-y-auto border rounded p-3">
+              {teachers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No teachers available</p>
+              ) : (
+                teachers.map((teacher) => (
+                  <div key={teacher.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`teacher-${teacher.id}`}
+                      checked={selectedTeachers.includes(teacher.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedTeachers([...selectedTeachers, teacher.id])
+                        } else {
+                          setSelectedTeachers(selectedTeachers.filter((id) => id !== teacher.id))
+                        }
+                      }}
+                    />
+                    <label htmlFor={`teacher-${teacher.id}`} className="cursor-pointer text-sm">
+                      {teacher.full_name}
+                    </label>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

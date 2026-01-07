@@ -12,6 +12,7 @@ import {
   CreditCard,
   Settings,
   LogOut,
+  DollarSign,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -58,6 +59,11 @@ export function Sidebar() {
       href: '/admin/debtors',
       label: 'Debtors',
       icon: CreditCard,
+    },
+    {
+      href: '/admin/commission',
+      label: 'Commission',
+      icon: DollarSign,
     },
     {
       href: '/admin/users',
