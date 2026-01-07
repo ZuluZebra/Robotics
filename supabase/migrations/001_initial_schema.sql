@@ -213,8 +213,7 @@ BEGIN
     WHERE student_id = p_student_id
       AND class_id = p_class_id
       AND status = 'absent'
-      AND attendance_date >= CURRENT_DATE - INTERVAL '14 days'
-    ORDER BY attendance_date DESC;
+      AND attendance_date >= CURRENT_DATE - INTERVAL '14 days';
 
     RETURN consecutive_count;
 END;
