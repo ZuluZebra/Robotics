@@ -28,7 +28,6 @@ export function ClassSelector({
 }: ClassSelectorProps) {
   const [schools, setSchools] = useState<School[]>([])
   const [classes, setClasses] = useState<Class[]>([])
-  const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
   // Fetch schools
@@ -45,8 +44,6 @@ export function ClassSelector({
         setSchools(data || [])
       } catch (error) {
         console.error('Error fetching schools:', error)
-      } finally {
-        setLoading(false)
       }
     }
 
