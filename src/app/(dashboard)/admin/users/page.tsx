@@ -7,7 +7,7 @@ import { TeacherAssignments } from '@/components/admin/teacher-assignments'
 import { DataTable } from '@/components/admin/data-table'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { UserProfile } from '@/types/models'
 import { Plus, Edit2, Trash2, GraduationCap } from 'lucide-react'
@@ -91,7 +91,10 @@ export default function UsersPage() {
 
       <Dialog open={dialogMode === 'form'} onOpenChange={(open) => !open && setDialogMode(null)}>
         <DialogContent className='max-w-2xl'>
-          <DialogHeader><DialogTitle>{selectedTeacher ? 'Edit' : 'Create'} Teacher</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{selectedTeacher ? 'Edit' : 'Create'} Teacher</DialogTitle>
+            <DialogDescription>{selectedTeacher ? 'Update teacher information' : 'Add a new teacher to the system'}</DialogDescription>
+          </DialogHeader>
           <TeacherForm
             teacher={selectedTeacher || undefined}
             onSuccess={handleSuccess}
@@ -102,7 +105,10 @@ export default function UsersPage() {
 
       <Dialog open={dialogMode === 'assignments'} onOpenChange={(open) => !open && setDialogMode(null)}>
         <DialogContent className='max-w-2xl'>
-          <DialogHeader><DialogTitle>Manage Assignments</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Manage Assignments</DialogTitle>
+            <DialogDescription>Select which classes this teacher is responsible for</DialogDescription>
+          </DialogHeader>
           {selectedTeacher && (
             <TeacherAssignments
               teacherId={selectedTeacher.id}

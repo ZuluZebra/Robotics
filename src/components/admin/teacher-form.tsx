@@ -130,10 +130,13 @@ export function TeacherForm({ teacher, onSuccess, onCancel }: TeacherFormProps) 
               disabled={!!teacher}
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="teacher@example.com"
+              placeholder="john.smith@roboticsleague.com"
             />
             {teacher && (
               <p className="text-sm text-muted-foreground mt-1">Cannot change email for existing teachers</p>
+            )}
+            {!teacher && (
+              <p className="text-sm text-muted-foreground mt-1">Use a real-looking email address. Test emails like test@test.com are rejected by the system.</p>
             )}
           </div>
 
