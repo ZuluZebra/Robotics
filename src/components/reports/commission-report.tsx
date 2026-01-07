@@ -150,8 +150,8 @@ export function CommissionReport() {
                         <tr key={student.student_id} className="border-b">
                           <td className="py-2">{student.student_name}</td>
                           <td className="py-2 text-right">{student.total_absences}</td>
-                          <td className="py-2 text-xs">{student.first_absence_date ? new Date(student.first_absence_date).toLocaleDateString() : '—'}</td>
-                          <td className="py-2 text-xs">{student.last_absence_date ? new Date(student.last_absence_date).toLocaleDateString() : '—'}</td>
+                          <td className="py-2 text-xs">{student.first_absence_date ? new Date(student.first_absence_date).toLocaleDateString() : '-'}</td>
+                          <td className="py-2 text-xs">{student.last_absence_date ? new Date(student.last_absence_date).toLocaleDateString() : '-'}</td>
                         </tr>
                       ))}
                     </tbody>
