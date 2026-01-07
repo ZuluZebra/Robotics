@@ -48,10 +48,10 @@ export default function LoginPage() {
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">SA</span>
+              <span className="text-white font-bold text-xl">RL</span>
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">School Attendance</CardTitle>
+          <CardTitle className="text-2xl text-center">Robotics League Attendance School System</CardTitle>
           <CardDescription className="text-center">
             Sign in to your account
           </CardDescription>

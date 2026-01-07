@@ -37,7 +37,7 @@ export function Header() {
     <header className="border-b bg-white shadow-sm">
       <div className="flex items-center justify-between px-8 py-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">School Attendance</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Robotics League</h1>
           <p className="text-sm text-gray-600 mt-1">
             Welcome back, {profile?.full_name || 'User'}
           </p>
