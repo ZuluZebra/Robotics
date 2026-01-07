@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { UserProfile } from '@/types/models'
-import { Plus, Edit2, Trash2, Users as UsersIcon, GraduationCap } from 'lucide-react'
+import { Plus, Edit2, Trash2, GraduationCap } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 

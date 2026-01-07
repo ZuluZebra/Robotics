@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Class } from '@/types/models'
-import { Loader2, X } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 interface TeacherAssignmentsProps {
   teacherId: string

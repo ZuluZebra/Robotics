@@ -65,7 +65,7 @@ export function CommissionReport() {
     setExpandedClasses(newSet)
   }
 
-  const groupedByClass: any = reportData.reduce((acc, item) => {
+  const groupedByClass: Record<string, any> = reportData.reduce((acc: Record<string, any>, item) => {
     const key = item.class_id
     if (!acc[key]) {
       acc[key] = { class_id: item.class_id, class_name: item.class_name, students: [] }
