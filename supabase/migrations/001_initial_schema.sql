@@ -519,6 +519,7 @@ SELECT
     aa.consecutive_absences,
     aa.weeks_absent,
     aa.is_debtor,
+    aa.is_resolved,
     s.id as student_id,
     s.first_name || ' ' || s.last_name as student_name,
     s.grade,
@@ -535,5 +536,4 @@ JOIN students s ON aa.student_id = s.id
 LEFT JOIN classes c ON s.class_id = c.id
 LEFT JOIN schools sc ON s.school_id = sc.id
 LEFT JOIN student_accounts sa ON s.id = sa.student_id
-WHERE aa.is_resolved = false
 ORDER BY aa.alert_date DESC, aa.consecutive_absences DESC;
