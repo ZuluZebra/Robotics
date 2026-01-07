@@ -1,5 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { generateInitials } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -7,6 +10,28 @@ import { Bell } from 'lucide-react'
 
 export function Header() {
   const { profile } = useAuth()
+  const router = useRouter()
+  const supabase = createClient()
+  const [unresolvedAlertCount, setUnresolvedAlertCount] = useState(0)
+
+  // Fetch unresolved alerts count
+  useEffect(() => {
+    const fetchAlertCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('attendance_alerts')
+          .select('id', { count: 'exact' })
+          .eq('is_resolved', false)
+
+        if (error) throw error
+        setUnresolvedAlertCount(count || 0)
+      } catch (error) {
+        console.error('Error fetching alert count:', error)
+      }
+    }
+
+    fetchAlertCount()
+  }, [supabase])
 
   return (
     <header className="border-b bg-white shadow-sm">
@@ -24,10 +49,15 @@ export function Header() {
             variant="ghost"
             size="icon"
             className="relative"
-            aria-label="Notifications"
+            aria-label="View alerts"
+            onClick={() => router.push('/alerts')}
           >
             <Bell className="w-5 h-5 text-gray-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            {unresolvedAlertCount > 0 && (
+              <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                {unresolvedAlertCount > 9 ? '9+' : unresolvedAlertCount}
+              </span>
+            )}
           </Button>
 
           {/* User Avatar */}
