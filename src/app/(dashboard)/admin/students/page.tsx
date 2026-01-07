@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Student } from '@/types/models'
-import { Plus, Edit2, Trash2, FileUp } from 'lucide-react'
+import { Plus, Edit2, Trash2, FileUp, Eye } from 'lucide-react'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -18,6 +18,7 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const supabase = createClient()
@@ -118,6 +119,73 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Details Dialog */}
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Student Details</DialogTitle>
+          </DialogHeader>
+          {selectedStudent && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-lg">
+                  <CardTitle className="text-2xl">{selectedStudent.first_name} {selectedStudent.last_name}</CardTitle>
+                  <CardDescription className="text-blue-100">Student ID: {selectedStudent.student_number}</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-4">Student Information</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-gray-600">Grade</p>
+                          <p className="text-base font-medium">{selectedStudent.grade}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Student Number</p>
+                          <p className="text-base font-medium">{selectedStudent.student_number}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Date of Birth</p>
+                          <p className="text-base font-medium">
+                            {selectedStudent.date_of_birth
+                              ? new Date(selectedStudent.date_of_birth).toLocaleDateString()
+                              : '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-4">Parent Information</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-gray-600">Parent Name</p>
+                          <p className="text-base font-medium">{selectedStudent.parent_name || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Parent Email</p>
+                          <p className="text-base font-medium text-blue-600">{selectedStudent.parent_email || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Parent Phone</p>
+                          <p className="text-base font-medium">{selectedStudent.parent_phone || '—'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {selectedStudent.notes && (
+                    <div className="mt-6 pt-6 border-t">
+                      <h3 className="font-semibold text-gray-900 mb-2">Notes</h3>
+                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{selectedStudent.notes}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Students Table */}
       <Card>
         <CardHeader>
@@ -155,6 +223,17 @@ export default function StudentsPage() {
             loading={loading}
             actions={(student) => (
               <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedStudent(student)
+                    setShowDetails(true)
+                  }}
+                  aria-label="View student details"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
