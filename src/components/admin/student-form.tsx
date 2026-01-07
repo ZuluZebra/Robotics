@@ -103,6 +103,7 @@ export function StudentForm({ student, onSuccess, onCancel }: StudentFormProps) 
         school_id: selectedSchool,
         class_id: selectedClass || null,
         ...formData,
+        date_of_birth: formData.date_of_birth || null,
       }
 
       if (student?.id) {

@@ -6,8 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { useEffect } from 'react'
+import { Class } from '@/types/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +29,22 @@ export default function ImportStudentsPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [fileKey, setFileKey] = useState(0)
+  const [classes, setClasses] = useState<Class[]>([])
+  const [selectedClass, setSelectedClass] = useState('')
   const supabase = createClient()
+
+  useEffect(() => {
+    fetchClasses()
+  }, [])
+
+  const fetchClasses = async () => {
+    const { data } = await supabase
+      .from('classes')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
+    if (data) setClasses(data)
+  }
 
   const downloadTemplate = () => {
     const template = `first_name,last_name,grade,student_number,parent_name,parent_email,parent_phone,school_id,class_id
@@ -46,6 +66,18 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
     const file = e.target.files?.[0]
     if (!file) return
 
+    const fileName = file.name.toLowerCase()
+
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      handleXlsxUpload(file)
+    } else if (fileName.endsWith('.csv')) {
+      handleCsvUpload(file)
+    } else {
+      toast.error('Please upload a CSV or Excel file')
+    }
+  }
+
+  const handleCsvUpload = (file: File) => {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -58,7 +90,44 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
     })
   }
 
+  const handleXlsxUpload = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      try {
+        const data = e.target?.result
+        const workbook = XLSX.read(data, { type: 'binary' })
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+        const rows = XLSX.utils.sheet_to_json(worksheet)
+        await importStudents(rows as any[])
+      } catch (error) {
+        toast.error('Failed to parse Excel file')
+      }
+    }
+    reader.readAsBinaryString(file)
+  }
+
   const importStudents = async (data: any[]) => {
+    if (data.length === 0) {
+      toast.error('No data found in file')
+      return
+    }
+
+    // Detect column format
+    const firstRow = data[0]
+    const hasStudentNameColumn = 'Student Name' in firstRow || 'student_name' in firstRow
+    const hasFirstNameColumn = 'first_name' in firstRow
+
+    if (!hasFirstNameColumn && !hasStudentNameColumn) {
+      toast.error('Could not find student name columns. Use "first_name" and "last_name" or "Student Name"')
+      return
+    }
+
+    // If using "Student Name" format and no class selected
+    if (hasStudentNameColumn && !selectedClass) {
+      toast.error('Please select a class to import these students into')
+      return
+    }
+
     setLoading(true)
     const errors: ImportResult['errors'] = []
     let successCount = 0
@@ -68,13 +137,33 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
         const row = data[i]
 
         try {
-          // Validate required fields
-          if (!row.first_name || !row.last_name || !row.grade) {
-            throw new Error('Missing required fields (first_name, last_name, grade)')
+          let firstName = ''
+          let lastName = ''
+          let grade = ''
+
+          // Parse Student Name format (like "Righardt Coetzee")
+          if (hasStudentNameColumn && !hasFirstNameColumn) {
+            const studentName = row['Student Name'] || ''
+            const nameParts = studentName.trim().split(/\s+/)
+            if (nameParts.length < 2) {
+              throw new Error(`Invalid student name format: "${studentName}" (expected "First Last")`)
+            }
+            firstName = nameParts[0]
+            lastName = nameParts.slice(1).join(' ')
+            grade = (row['Grade'] || '').toString()
+          } else {
+            // Standard CSV format
+            firstName = row.first_name || ''
+            lastName = row.last_name || ''
+            grade = row.grade || ''
           }
 
-          // Get school ID if school_name is provided
-          let schoolId = row.school_id
+          if (!firstName || !lastName) {
+            throw new Error('Missing student name')
+          }
+
+          // Get school ID if provided
+          let schoolId = row.school_id || null
           if (row.school_name && !schoolId) {
             const { data: schoolData } = await supabase
               .from('schools')
@@ -88,18 +177,13 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
             schoolId = schoolData.id
           }
 
-          if (!schoolId) {
-            throw new Error('school_id or school_name is required')
-          }
-
-          // Get class ID if class_name is provided
-          let classId = row.class_id || null
+          // Use selected class or from row
+          let classId = selectedClass || row.class_id || null
           if (row.class_name && !classId) {
             const { data: classData } = await supabase
               .from('classes')
               .select('id')
               .eq('name', row.class_name)
-              .eq('school_id', schoolId)
               .single()
 
             if (classData) {
@@ -112,17 +196,17 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
             .from('students')
             .insert([
               {
-                first_name: row.first_name,
-                last_name: row.last_name,
-                grade: row.grade,
-                student_number: row.student_number || null,
+                first_name: firstName,
+                last_name: lastName,
+                grade: grade || null,
+                student_number: row.student_number || row['ID Number'] || null,
                 parent_name: row.parent_name || null,
                 parent_email: row.parent_email || null,
                 parent_phone: row.parent_phone || null,
                 emergency_contact: row.emergency_contact || null,
                 emergency_phone: row.emergency_phone || null,
-                medical_notes: row.medical_notes || null,
-                school_id: schoolId,
+                medical_notes: row.Comment || row.medical_notes || null,
+                school_id: schoolId || null,
                 class_id: classId,
               },
             ])
@@ -178,28 +262,53 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
 
       <Card>
         <CardHeader>
-          <CardTitle>Upload CSV File</CardTitle>
+          <CardTitle>Upload CSV or Excel File</CardTitle>
           <CardDescription>
-            Import students from a CSV file. Download the template to see the required format.
+            Import students from a CSV or Excel file. Download the template to see the required format.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={downloadTemplate} variant="outline">
-            Download Template
-          </Button>
+          <div className="grid grid-cols-2 gap-4">
+            <Button onClick={downloadTemplate} variant="outline">
+              Download CSV Template
+            </Button>
+          </div>
+
+          <div className="space-y-4 border-t pt-4">
+            <div>
+              <Label htmlFor="class-select">Select Class (for Excel imports)</Label>
+              <Select value={selectedClass} onValueChange={setSelectedClass}>
+                <SelectTrigger id="class-select">
+                  <SelectValue placeholder="Optional - select if importing Excel list" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
             <input
               key={fileKey}
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls"
               onChange={handleFileUpload}
               disabled={loading}
               className="w-full"
             />
             <p className="text-sm text-gray-600 mt-2">
-              CSV should include columns: first_name, last_name, grade, student_number, parent_name,
-              parent_email, parent_phone, school_id (or school_name), class_id (optional, or class_name)
+              Supports: CSV files or Excel files (.xlsx, .xls)
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              CSV format: first_name, last_name, grade, student_number, parent_name, parent_email, parent_phone, school_id, class_id
+            </p>
+            <p className="text-sm text-gray-500">
+              Excel format: "Student Name", "Grade", "Time", "Comment"
             </p>
           </div>
 
