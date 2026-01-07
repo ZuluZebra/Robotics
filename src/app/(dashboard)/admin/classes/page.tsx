@@ -12,6 +12,8 @@ import { Class } from '@/types/models'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { formatSchedule, formatTime } from '@/lib/utils'
 
+export const dynamic = 'force-dynamic'
+
 export default function ClassesPage() {
   const [classes, setClasses] = useState<Class[]>([])
   const [loading, setLoading] = useState(true)

@@ -19,6 +19,8 @@ import {
 } from 'recharts'
 import { toast } from 'sonner'
 
+export const dynamic = 'force-dynamic'
+
 interface ClassStats {
   class_name: string
   attendance_percentage: number

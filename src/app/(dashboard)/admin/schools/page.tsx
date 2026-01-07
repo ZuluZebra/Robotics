@@ -11,6 +11,8 @@ import { toast } from 'sonner'
 import { School } from '@/types/models'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 export default function SchoolsPage() {
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)

@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import { LogOut } from 'lucide-react'
 import { generateInitials } from '@/lib/utils'
 
+export const dynamic = 'force-dynamic'
+
 export default function ProfilePage() {
   const { profile, logout } = useAuth()
 

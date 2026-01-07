@@ -12,6 +12,8 @@ import { Student } from '@/types/models'
 import { Plus, Edit2, Trash2, FileUp } from 'lucide-react'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)

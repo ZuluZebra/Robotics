@@ -11,6 +11,8 @@ import { AttendanceAlertWithDetails } from '@/types/models'
 import { Mail, CheckCircle2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
+export const dynamic = 'force-dynamic'
+
 interface FilterState {
   resolved: 'all' | 'unresolved' | 'resolved'
   type: 'all' | 'low_attendance' | 'debtor_low_attendance'

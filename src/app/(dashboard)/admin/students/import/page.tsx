@@ -9,6 +9,8 @@ import Papa from 'papaparse'
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 interface ImportResult {
   success: number
   failed: number

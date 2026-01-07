@@ -13,6 +13,8 @@ import { toast } from 'sonner'
 import { StudentAccount } from '@/types/models'
 import { Loader2, DollarSign } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 interface StudentAccountWithDetails extends StudentAccount {
   student_name: string
   student_id: string
