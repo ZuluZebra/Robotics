@@ -139,20 +139,28 @@ export function AttendanceForm() {
         marked_at: new Date().toISOString(),
       }))
 
-      const { error } = await supabase
+      // Delete existing records for this class and date
+      const { error: deleteError } = await supabase
         .from('attendance_records')
-        .upsert(attendanceData, {
-          onConflict: 'student_id,class_id,attendance_date',
-        })
+        .delete()
+        .eq('class_id', selectedClass)
+        .eq('attendance_date', today)
 
-      if (error) throw error
+      if (deleteError) throw deleteError
+
+      // Insert new records
+      const { error: insertError } = await supabase
+        .from('attendance_records')
+        .insert(attendanceData)
+
+      if (insertError) throw insertError
 
       toast.success(
         `Attendance marked for ${students.length} students!`
       )
     } catch (error) {
       console.error('Error saving attendance:', error)
-      toast.error('Failed to save attendance')
+      toast.error('Failed to save attendance: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setSaving(false)
     }
