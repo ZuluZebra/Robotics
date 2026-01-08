@@ -113,7 +113,12 @@ export function ClassForm({
     try {
       const payload = {
         school_id: selectedSchool,
-        ...formData,
+        name: formData.name,
+        grade: formData.grade,
+        start_time: formData.start_time || null,
+        end_time: formData.end_time || null,
+        room_number: formData.room_number || null,
+        capacity: formData.capacity ? parseInt(formData.capacity as string) : null,
         schedule_days: scheduleDays,
       }
 
