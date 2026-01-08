@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { ClassSelector } from './class-selector'
 import { StudentSearch } from './student-search'
-import { StudentRow } from './student-row'
+import { CompactAttendanceList } from './compact-attendance-list'
 import { WeeklyStats } from './weekly-stats'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,9 +22,6 @@ export function AttendanceForm() {
   const [selectedClass, setSelectedClass] = useState('')
   const [useTeacherMode, setUseTeacherMode] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
-  const [attendanceRecords, setAttendanceRecords] = useState<
-    Record<string, AttendanceRecord>
-  >({})
   const [studentStates, setStudentStates] = useState<
     Record<
       string,
@@ -149,7 +146,6 @@ export function AttendanceForm() {
           }
         })
 
-        setAttendanceRecords(recordsMap)
         setParentNotifications(notificationsMap)
         setStudentStates(initialStates)
       } catch (error) {
@@ -332,47 +328,39 @@ export function AttendanceForm() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {filteredStudents.map((student) => (
-                    <StudentRow
-                      key={student.id}
-                      student={student}
-                      attendance={attendanceRecords[student.id]}
-                      parentNotification={parentNotifications[student.id]}
-                      isPresent={studentStates[student.id]?.isPresent || false}
-                      absenceReason={
-                        studentStates[student.id]?.absenceReason || ''
-                      }
-                      comments={studentStates[student.id]?.comments || ''}
-                      onPresentChange={(isPresent) =>
-                        setStudentStates((prev) => ({
-                          ...prev,
-                          [student.id]: {
-                            ...prev[student.id],
-                            isPresent,
-                          },
-                        }))
-                      }
-                      onReasonChange={(reason) =>
-                        setStudentStates((prev) => ({
-                          ...prev,
-                          [student.id]: {
-                            ...prev[student.id],
-                            absenceReason: reason,
-                          },
-                        }))
-                      }
-                      onCommentChange={(comment) =>
-                        setStudentStates((prev) => ({
-                          ...prev,
-                          [student.id]: {
-                            ...prev[student.id],
-                            comments: comment,
-                          },
-                        }))
-                      }
-                    />
-                  ))}
+                <div className="max-h-[600px] overflow-y-auto">
+                  <CompactAttendanceList
+                    students={filteredStudents}
+                    parentNotifications={parentNotifications}
+                    studentStates={studentStates}
+                    onPresentChange={(studentId, isPresent) =>
+                      setStudentStates((prev) => ({
+                        ...prev,
+                        [studentId]: {
+                          ...prev[studentId],
+                          isPresent,
+                        },
+                      }))
+                    }
+                    onReasonChange={(studentId, reason) =>
+                      setStudentStates((prev) => ({
+                        ...prev,
+                        [studentId]: {
+                          ...prev[studentId],
+                          absenceReason: reason,
+                        },
+                      }))
+                    }
+                    onCommentChange={(studentId, comment) =>
+                      setStudentStates((prev) => ({
+                        ...prev,
+                        [studentId]: {
+                          ...prev[studentId],
+                          comments: comment,
+                        },
+                      }))
+                    }
+                  />
                 </div>
               )}
 
