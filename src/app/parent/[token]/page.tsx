@@ -399,76 +399,6 @@ export default function ParentPortalPage() {
           </Card>
         )}
 
-        {/* Payment Information */}
-        {(data.monthly_cost || data.bank_name) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-green-600" />
-                Payment Information
-              </CardTitle>
-              <CardDescription>
-                Monthly robotics program fee and banking details
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Monthly Cost */}
-              {data.monthly_cost && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800 font-medium mb-1">Monthly Cost</p>
-                  <p className="text-3xl font-bold text-blue-900">
-                    R {data.monthly_cost.toFixed(2)}
-                  </p>
-                </div>
-              )}
-
-              {/* Banking Details */}
-              {data.bank_name && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-900">Banking Details for Payment</h3>
-
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    {data.bank_name && (
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-gray-600">Bank</span>
-                        <span className="font-medium text-right">{data.bank_name}</span>
-                      </div>
-                    )}
-
-                    {data.account_holder && (
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-gray-600">Account Holder</span>
-                        <span className="font-medium text-right">{data.account_holder}</span>
-                      </div>
-                    )}
-
-                    {data.account_number && (
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-gray-600">Account Number</span>
-                        <span className="font-mono font-medium text-right">{data.account_number}</span>
-                      </div>
-                    )}
-
-                    {data.branch_code && (
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-gray-600">Branch Code</span>
-                        <span className="font-mono font-medium text-right">{data.branch_code}</span>
-                      </div>
-                    )}
-
-                    {data.payment_reference && (
-                      <div className="flex justify-between items-start border-t pt-3">
-                        <span className="text-sm text-gray-600">Payment Reference</span>
-                        <span className="font-medium text-right">{data.payment_reference}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Notify Absence Card */}
         {data?.class_id && (
           <Card>
@@ -753,6 +683,96 @@ export default function ParentPortalPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Payment Information - Moved to Bottom */}
+        {(data.monthly_cost || data.bank_name) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-green-600" />
+                Payment Information
+              </CardTitle>
+              <CardDescription>
+                Monthly robotics program fee and banking details
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {/* Monthly Cost */}
+              {data.monthly_cost && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 font-medium mb-1">Monthly Cost</p>
+                  <p className="text-3xl font-bold text-blue-900">
+                    R {data.monthly_cost.toFixed(2)}
+                  </p>
+                </div>
+              )}
+
+              {/* Robotics League Banking Details */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900">Robotics League Banking Details</h3>
+
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 space-y-4 border border-blue-200">
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-gray-600">Account Name</span>
+                    <span className="font-medium text-right">Robotics League Gold Business Account</span>
+                  </div>
+
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-gray-600">Account Number</span>
+                    <span className="font-mono font-medium text-right">62943486028</span>
+                  </div>
+
+                  <div className="flex justify-between items-start border-t border-blue-200 pt-3">
+                    <span className="text-sm text-gray-600">Branch Code</span>
+                    <span className="font-mono font-medium text-right">250655</span>
+                  </div>
+
+                  <div className="flex justify-between items-start border-t border-blue-200 pt-3">
+                    <span className="text-sm text-gray-600">Payment Reference</span>
+                    <span className="font-medium text-right">{data.first_name} {data.last_name}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* School Banking Details (if available) */}
+              {data.bank_name && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">School Banking Details</h3>
+
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    {data.bank_name && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-gray-600">Bank</span>
+                        <span className="font-medium text-right">{data.bank_name}</span>
+                      </div>
+                    )}
+
+                    {data.account_holder && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-gray-600">Account Holder</span>
+                        <span className="font-medium text-right">{data.account_holder}</span>
+                      </div>
+                    )}
+
+                    {data.account_number && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-gray-600">Account Number</span>
+                        <span className="font-mono font-medium text-right">{data.account_number}</span>
+                      </div>
+                    )}
+
+                    {data.branch_code && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-gray-600">Branch Code</span>
+                        <span className="font-mono font-medium text-right">{data.branch_code}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
