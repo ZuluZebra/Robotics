@@ -43,6 +43,51 @@ export default function ParentPortalPage() {
   const [absenceDate, setAbsenceDate] = useState('')
   const [absenceNotes, setAbsenceNotes] = useState('')
   const [notifyingAbsence, setNotifyingAbsence] = useState(false)
+  const [upcomingClassSessions, setUpcomingClassSessions] = useState<Array<{ date: string; dayName: string; time: string }>>([])
+
+  // Calculate upcoming class sessions based on schedule_days
+  const calculateUpcomingClassSessions = (data: ParentPortalData) => {
+    if (!data.schedule_days || !Array.isArray(data.schedule_days)) {
+      setUpcomingClassSessions([])
+      return
+    }
+
+    const dayMap: Record<string, number> = {
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6,
+      Sunday: 0,
+    }
+
+    const sessions: Array<{ date: string; dayName: string; time: string }> = []
+    const today = new Date()
+    let currentDate = new Date(today)
+
+    // Find next 5 upcoming class sessions
+    while (sessions.length < 5) {
+      const dayOfWeek = currentDate.getDay()
+      const dayNames = Object.entries(dayMap)
+        .filter(([_, dayNum]) => dayNum === dayOfWeek)
+        .map(([name]) => name)
+
+      if (dayNames.length > 0 && data.schedule_days.includes(dayNames[0])) {
+        const dateStr = currentDate.toISOString().split('T')[0]
+        const timeStr = data.start_time || 'TBA'
+        sessions.push({
+          date: dateStr,
+          dayName: dayNames[0],
+          time: timeStr,
+        })
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+
+    setUpcomingClassSessions(sessions)
+  }
 
   useEffect(() => {
     const loadStudentData = async () => {
@@ -64,6 +109,9 @@ export default function ParentPortalPage() {
         setEmergencyPhone(result.data.emergency_phone || '')
         setMedicalNotes(result.data.medical_notes || '')
         setDateOfBirth(result.data.date_of_birth || '')
+
+        // Calculate upcoming class sessions
+        calculateUpcomingClassSessions(result.data)
 
         // Load upcoming absences
         const absencesResult = await getUpcomingAbsences(token)
@@ -183,10 +231,6 @@ export default function ParentPortalPage() {
     }
   }
 
-  // Get today's date
-  const getTodayDate = () => {
-    return new Date().toISOString().split('T')[0]
-  }
 
   // Loading state
   if (loading) {
@@ -441,16 +485,34 @@ export default function ParentPortalPage() {
               {/* Absence Form */}
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Date of Absence</label>
-                  <Input
-                    type="date"
-                    value={absenceDate}
-                    onChange={(e) => setAbsenceDate(e.target.value)}
-                    min={getTodayDate()}
-                    className="mt-1"
-                    placeholder="Select a date"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Can only notify for today or future dates</p>
+                  <label className="text-sm font-medium text-gray-700">Select Class Session *</label>
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    {upcomingClassSessions.length > 0 ? (
+                      upcomingClassSessions.map((session) => (
+                        <button
+                          key={session.date}
+                          onClick={() => setAbsenceDate(session.date)}
+                          className={`p-3 rounded-lg border-2 transition text-left ${
+                            absenceDate === session.date
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 bg-white hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="font-medium text-gray-900">{session.dayName}</div>
+                          <div className="text-sm text-gray-600">
+                            {new Date(session.date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                            {session.time !== 'TBA' && ` at ${session.time}`}
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-600">No upcoming class sessions</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>
