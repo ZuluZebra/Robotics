@@ -3,11 +3,13 @@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Student, AttendanceRecord } from '@/types/models'
+import { Student, AttendanceRecord, ParentAbsenceNotification } from '@/types/models'
+import { Bell } from 'lucide-react'
 
 interface StudentRowProps {
   student: Student
   attendance?: AttendanceRecord
+  parentNotification?: ParentAbsenceNotification
   isPresent: boolean
   absenceReason: string
   comments: string
@@ -18,6 +20,7 @@ interface StudentRowProps {
 
 export function StudentRow({
   student,
+  parentNotification,
   isPresent,
   absenceReason,
   comments,
@@ -28,7 +31,9 @@ export function StudentRow({
   const studentName = `${student.first_name} ${student.last_name}`
 
   return (
-    <div className="border rounded-lg p-4 space-y-3 hover:bg-gray-50 transition">
+    <div className={`border rounded-lg p-4 space-y-3 hover:bg-gray-50 transition ${
+      parentNotification ? 'bg-amber-50 border-amber-200' : ''
+    }`}>
       <div className="flex items-start gap-4">
         <Checkbox
           id={`student-${student.id}`}
@@ -37,12 +42,31 @@ export function StudentRow({
           className="mt-1"
         />
         <div className="flex-1 min-w-0">
-          <label
-            htmlFor={`student-${student.id}`}
-            className="font-medium cursor-pointer text-gray-900"
-          >
-            {studentName}
-          </label>
+          <div className="flex items-center gap-2 mb-1">
+            <label
+              htmlFor={`student-${student.id}`}
+              className="font-medium cursor-pointer text-gray-900"
+            >
+              {studentName}
+            </label>
+            {parentNotification && (
+              <div
+                className="group relative"
+                title={`Parent notified: ${parentNotification.reason || 'Absence notification'}`}
+              >
+                <Bell className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap z-10">
+                  <div className="font-semibold mb-1">Parent Notified</div>
+                  {parentNotification.reason && (
+                    <div>Reason: {parentNotification.reason}</div>
+                  )}
+                  {parentNotification.notes && (
+                    <div className="mt-1">Notes: {parentNotification.notes}</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <p className="text-sm text-gray-600">Grade {student.grade}</p>
         </div>
         <span className={`text-sm font-semibold px-3 py-1 rounded-full ${

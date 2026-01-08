@@ -9,7 +9,14 @@ import { toast } from 'sonner'
 import { UserProfile, TeacherStudentAbsences } from '@/types/models'
 import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 
-export function CommissionReport() {
+interface CommissionReportProps {
+  dateRange?: {
+    start: string
+    end: string
+  }
+}
+
+export function CommissionReport({ dateRange }: CommissionReportProps) {
   const [loading, setLoading] = useState(true)
   const [selectedTeacher, setSelectedTeacher] = useState('')
   const [teachers, setTeachers] = useState<UserProfile[]>([])
@@ -50,14 +57,57 @@ export function CommissionReport() {
           .eq('teacher_id', selectedTeacher)
           .order('class_name, student_name')
         if (error) throw error
-        setReportData(data || [])
+
+        // Filter by date range on client side
+        let filteredData = data || []
+        if (dateRange) {
+          const startDate = new Date(dateRange.start)
+          const endDate = new Date(dateRange.end)
+
+          filteredData = filteredData.filter((item) => {
+            // Include absences if they occurred within the date range
+            if (item.first_absence_date) {
+              const firstDate = new Date(item.first_absence_date)
+              const lastDate = item.last_absence_date ? new Date(item.last_absence_date) : firstDate
+              // Check if there's any overlap between the absence period and the date range
+              return firstDate <= endDate && lastDate >= startDate
+            }
+            return false
+          })
+
+          // Also recalculate total_absences based on the filtered date range
+          // This requires querying attendance_records directly
+          const { data: absenceData, error: absenceError } = await supabase
+            .from('attendance_records')
+            .select('student_id, class_id')
+            .eq('status', 'absent')
+            .gte('attendance_date', dateRange.start)
+            .lte('attendance_date', dateRange.end)
+
+          if (!absenceError && absenceData) {
+            // Count absences per student
+            const absenceCounts: Record<string, number> = {}
+            absenceData.forEach((record: any) => {
+              const key = `${record.student_id}-${record.class_id}`
+              absenceCounts[key] = (absenceCounts[key] || 0) + 1
+            })
+
+            // Update filtered data with correct absence counts
+            filteredData = filteredData.map((item) => ({
+              ...item,
+              total_absences: absenceCounts[`${item.student_id}-${item.class_id}`] || 0,
+            }))
+          }
+        }
+
+        setReportData(filteredData)
       } catch (error) {
         console.error('Error:', error)
         toast.error('Failed to load report')
       }
     }
     fetchReportData()
-  }, [selectedTeacher, supabase])
+  }, [selectedTeacher, dateRange, supabase])
 
   const toggleClassExpanded = (classId: string) => {
     const newSet = new Set(expandedClasses)
@@ -107,7 +157,14 @@ export function CommissionReport() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle>{selectedTeacherData?.full_name}</CardTitle>
+              <div>
+                <CardTitle>{selectedTeacherData?.full_name}</CardTitle>
+                {dateRange && (
+                  <CardDescription>
+                    Period: {new Date(dateRange.start).toLocaleDateString()} to {new Date(dateRange.end).toLocaleDateString()}
+                  </CardDescription>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">

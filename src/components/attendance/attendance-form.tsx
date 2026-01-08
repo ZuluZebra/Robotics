@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Student, AttendanceRecord } from '@/types/models'
+import { Student, AttendanceRecord, ParentAbsenceNotification } from '@/types/models'
 import { Loader2 } from 'lucide-react'
 
 export function AttendanceForm() {
@@ -33,7 +34,40 @@ export function AttendanceForm() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // Date picker state
+  const [selectedDate, setSelectedDate] = useState(() =>
+    new Date().toISOString().split('T')[0]
+  )
+  const [showDatePicker, setShowDatePicker] = useState(false)
+
+  // Parent notifications state
+  const [parentNotifications, setParentNotifications] = useState<
+    Record<string, ParentAbsenceNotification>
+  >({})
+
   const supabase = createClient()
+
+  // Get min date (30 days ago)
+  const getMinDate = () => {
+    const date = new Date()
+    date.setDate(date.getDate() - 30)
+    return date.toISOString().split('T')[0]
+  }
+
+  // Get today's date string
+  const getTodayDate = () => new Date().toISOString().split('T')[0]
+
+  // Format date for display
+  const formatDateDisplay = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00')
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
 
   // Determine if we should use teacher mode
   const shouldUseTeacherMode = (useTeacherMode || isTeacher) && assignedClasses.length > 0
@@ -71,13 +105,12 @@ export function AttendanceForm() {
         })
         setStudentStates(initialStates)
 
-        // Fetch today's attendance records
-        const today = new Date().toISOString().split('T')[0]
+        // Fetch attendance records for selected date
         const { data: recordsData, error: recordsError } = await supabase
           .from('attendance_records')
           .select('*')
           .eq('class_id', selectedClass)
-          .eq('attendance_date', today)
+          .eq('attendance_date', selectedDate)
 
         if (recordsError) throw recordsError
 
@@ -94,7 +127,30 @@ export function AttendanceForm() {
           }
         })
 
+        // Fetch parent absence notifications for selected date
+        const { data: notificationsData, error: notificationsError } = await supabase
+          .from('parent_absence_notifications')
+          .select('*')
+          .eq('class_id', selectedClass)
+          .eq('absence_date', selectedDate)
+          .eq('is_processed', false)
+
+        if (notificationsError) throw notificationsError
+
+        const notificationsMap: Record<string, ParentAbsenceNotification> = {}
+        notificationsData?.forEach((notification) => {
+          notificationsMap[notification.student_id] = notification
+          // Auto-mark pre-notified students as absent if they don't have existing records
+          if (!recordsMap[notification.student_id] && initialStates[notification.student_id]) {
+            initialStates[notification.student_id].isPresent = false
+            initialStates[notification.student_id].absenceReason =
+              notification.reason || 'Parent notified'
+            initialStates[notification.student_id].comments = notification.notes || ''
+          }
+        })
+
         setAttendanceRecords(recordsMap)
+        setParentNotifications(notificationsMap)
         setStudentStates(initialStates)
       } catch (error) {
         console.error('Error fetching students:', error)
@@ -105,7 +161,7 @@ export function AttendanceForm() {
     }
 
     fetchStudents()
-  }, [selectedClass, supabase])
+  }, [selectedClass, selectedDate, supabase])
 
   // Filter students based on search
   const filteredStudents = useMemo(
@@ -134,11 +190,10 @@ export function AttendanceForm() {
 
     setSaving(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
       const attendanceData = students.map((student) => ({
         student_id: student.id,
         class_id: selectedClass,
-        attendance_date: today,
+        attendance_date: selectedDate,
         status: studentStates[student.id]?.isPresent ? 'present' : 'absent',
         absence_reason: studentStates[student.id]?.absenceReason || null,
         comments: studentStates[student.id]?.comments || null,
@@ -151,12 +206,21 @@ export function AttendanceForm() {
         .from('attendance_records')
         .delete()
         .eq('class_id', selectedClass)
-        .eq('attendance_date', today)
+        .eq('attendance_date', selectedDate)
 
       // Insert new records
       await supabase
         .from('attendance_records')
         .insert(attendanceData)
+
+      // Mark parent notifications as processed
+      if (Object.keys(parentNotifications).length > 0) {
+        await supabase
+          .from('parent_absence_notifications')
+          .update({ is_processed: true })
+          .eq('class_id', selectedClass)
+          .eq('absence_date', selectedDate)
+      }
 
       toast.success(
         `Attendance marked for ${students.length} students!`
@@ -216,10 +280,36 @@ export function AttendanceForm() {
           {/* Attendance Marking */}
           <Card>
             <CardHeader>
-              <CardTitle>Students ({students.length})</CardTitle>
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle>Students ({students.length})</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                >
+                  {showDatePicker ? 'Hide Date' : 'Mark Different Date'}
+                </Button>
+              </div>
               <CardDescription>
-                Mark attendance for today
+                Marking attendance for {formatDateDisplay(selectedDate)}
               </CardDescription>
+              {showDatePicker && (
+                <div className="mt-4 pt-4 border-t space-y-2">
+                  <Label htmlFor="attendance-date">Select Date</Label>
+                  <Input
+                    id="attendance-date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    min={getMinDate()}
+                    max={getTodayDate()}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500">
+                    You can mark attendance for up to 30 days in the past
+                  </p>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Search */}
@@ -248,6 +338,7 @@ export function AttendanceForm() {
                       key={student.id}
                       student={student}
                       attendance={attendanceRecords[student.id]}
+                      parentNotification={parentNotifications[student.id]}
                       isPresent={studentStates[student.id]?.isPresent || false}
                       absenceReason={
                         studentStates[student.id]?.absenceReason || ''

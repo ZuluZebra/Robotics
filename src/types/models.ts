@@ -21,6 +21,11 @@ export interface School {
   phone?: string
   email?: string
   principal_name?: string
+  bank_name?: string
+  account_holder?: string
+  account_number?: string
+  branch_code?: string
+  payment_reference?: string
   is_active: boolean
   created_at: string
   updated_at: string
@@ -63,9 +68,32 @@ export interface Student {
   emergency_contact?: string
   emergency_phone?: string
   medical_notes?: string
+  monthly_cost?: number
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface ParentAccessToken {
+  id: string
+  student_id: string
+  token: string
+  created_at: string
+  expires_at?: string
+  is_active: boolean
+  last_accessed_at?: string
+}
+
+export interface ParentAbsenceNotification {
+  id: string
+  student_id: string
+  class_id: string
+  absence_date: string
+  reason?: string
+  notes?: string
+  created_at: string
+  created_by_parent: boolean
+  is_processed: boolean
 }
 
 export interface AttendanceRecord {
