@@ -24,6 +24,11 @@ export function SchoolForm({ school, onSuccess, onCancel }: SchoolFormProps) {
     phone: school?.phone || '',
     email: school?.email || '',
     principal_name: school?.principal_name || '',
+    bank_name: school?.bank_name || '',
+    account_holder: school?.account_holder || '',
+    account_number: school?.account_number || '',
+    branch_code: school?.branch_code || '',
+    payment_reference: school?.payment_reference || '',
   })
   const supabase = createClient()
 
@@ -121,6 +126,62 @@ export function SchoolForm({ school, onSuccess, onCancel }: SchoolFormProps) {
               onChange={(e) => setFormData({ ...formData, principal_name: e.target.value })}
               placeholder="Principal's full name"
             />
+          </div>
+
+          <div className="pt-4 border-t">
+            <h3 className="text-lg font-semibold mb-4">Banking Details</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="bank_name">Bank Name</Label>
+                <Input
+                  id="bank_name"
+                  value={formData.bank_name}
+                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                  placeholder="e.g., First National Bank"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="account_holder">Account Holder Name</Label>
+                <Input
+                  id="account_holder"
+                  value={formData.account_holder}
+                  onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
+                  placeholder="e.g., Robotics Academy Trust"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="account_number">Account Number</Label>
+                  <Input
+                    id="account_number"
+                    value={formData.account_number}
+                    onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                    placeholder="e.g., 1234567890"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="branch_code">Branch Code</Label>
+                  <Input
+                    id="branch_code"
+                    value={formData.branch_code}
+                    onChange={(e) => setFormData({ ...formData, branch_code: e.target.value })}
+                    placeholder="e.g., 250655"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="payment_reference">Payment Reference Format</Label>
+                <Input
+                  id="payment_reference"
+                  value={formData.payment_reference}
+                  onChange={(e) => setFormData({ ...formData, payment_reference: e.target.value })}
+                  placeholder="e.g., StudentName-Robotics"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-4 pt-4">

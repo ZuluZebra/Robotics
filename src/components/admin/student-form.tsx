@@ -36,6 +36,7 @@ export function StudentForm({ student, onSuccess, onCancel }: StudentFormProps) 
     grade: student?.grade || '',
     student_number: student?.student_number || '',
     date_of_birth: student?.date_of_birth || '',
+    monthly_cost: student?.monthly_cost || '',
     parent_name: student?.parent_name || '',
     parent_email: student?.parent_email || '',
     parent_phone: student?.parent_phone || '',
@@ -104,6 +105,7 @@ export function StudentForm({ student, onSuccess, onCancel }: StudentFormProps) 
         class_id: selectedClass || null,
         ...formData,
         date_of_birth: formData.date_of_birth || null,
+        monthly_cost: formData.monthly_cost ? parseFloat(formData.monthly_cost.toString()) : null,
       }
 
       if (student?.id) {
@@ -231,14 +233,28 @@ export function StudentForm({ student, onSuccess, onCancel }: StudentFormProps) 
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="date_of_birth">Date of Birth</Label>
-            <Input
-              id="date_of_birth"
-              type="date"
-              value={formData.date_of_birth}
-              onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="date_of_birth">Date of Birth</Label>
+              <Input
+                id="date_of_birth"
+                type="date"
+                value={formData.date_of_birth}
+                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="monthly_cost">Monthly Cost (ZAR)</Label>
+              <Input
+                id="monthly_cost"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.monthly_cost}
+                onChange={(e) => setFormData({ ...formData, monthly_cost: e.target.value })}
+                placeholder="e.g., 350.00"
+              />
+            </div>
           </div>
 
           <div className="border-t pt-4">
