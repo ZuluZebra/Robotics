@@ -9,8 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Student } from '@/types/models'
-import { Plus, Edit2, Trash2, FileUp, Eye } from 'lucide-react'
+import { Plus, Edit2, Trash2, FileUp, Eye, Share2, Copy } from 'lucide-react'
 import Link from 'next/link'
+import { generateParentAccessToken } from '@/app/actions/parent-portal'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,8 +22,11 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [shareLink, setShareLink] = useState('')
+  const [generatingLink, setGeneratingLink] = useState(false)
   const supabase = createClient()
 
   const fetchStudents = async () => {
@@ -66,6 +72,24 @@ export default function StudentsPage() {
     setShowForm(false)
     setSelectedStudent(null)
     fetchStudents()
+  }
+
+  const handleGenerateShareLink = async (student: Student) => {
+    setGeneratingLink(true)
+    setSelectedStudent(student)
+
+    const result = await generateParentAccessToken(student.id)
+
+    if (result.success && result.token) {
+      const link = `${window.location.origin}/parent/${result.token}`
+      setShareLink(link)
+      setShowShareModal(true)
+      toast.success(result.isNew ? 'New link created' : 'Retrieved existing link')
+    } else {
+      toast.error(result.error || 'Failed to generate link')
+    }
+
+    setGeneratingLink(false)
   }
 
   const filteredStudents = students.filter(
@@ -186,6 +210,49 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Share Modal Dialog */}
+      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Share Student Portal with Parent</DialogTitle>
+          </DialogHeader>
+          {selectedStudent && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Share this link with the parent of{' '}
+                <span className="font-semibold">
+                  {selectedStudent.first_name} {selectedStudent.last_name}
+                </span>
+                .
+              </p>
+
+              <div className="bg-gray-50 p-4 rounded-md border">
+                <Label className="text-xs text-gray-600 mb-2 block">Parent Portal Link</Label>
+                <div className="flex gap-2">
+                  <Input value={shareLink} readOnly className="font-mono text-sm" />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareLink)
+                      toast.success('Link copied!')
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+                <p className="text-xs text-blue-800">
+                  <strong>Note:</strong> This link never expires and allows parents to edit
+                  contact information, emergency contacts, medical notes, and date of birth.
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Students Table */}
       <Card>
         <CardHeader>
@@ -233,6 +300,15 @@ export default function StudentsPage() {
                   aria-label="View student details"
                 >
                   <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleGenerateShareLink(student)}
+                  disabled={generatingLink}
+                  aria-label="Share with parent"
+                >
+                  <Share2 className="h-4 w-4" />
                 </Button>
                 <Button
                   size="sm"
