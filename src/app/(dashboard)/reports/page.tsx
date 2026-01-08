@@ -203,6 +203,15 @@ export default function ReportsPage() {
       return
     }
 
+    // Summary data
+    const summaryData = [
+      { Metric: 'Overall Attendance %', Value: `${overallPercentage}%` },
+      { Metric: 'Total Present', Value: classStats.reduce((sum, s) => sum + s.present_count, 0) },
+      { Metric: 'Total Absent', Value: classStats.reduce((sum, s) => sum + s.absent_count, 0) },
+      { Metric: 'Date Range', Value: `${dateRange.start} to ${dateRange.end}` },
+    ]
+
+    // Detailed records data
     const data = attendanceRecords.map((record) => ({
       Date: record.attendance_date,
       'Student Name': record.student_name,
@@ -213,8 +222,15 @@ export default function ReportsPage() {
       Comments: record.comments || '—',
     }))
 
-    const ws = XLSX.utils.json_to_sheet(data)
+    // Create workbook with multiple sheets
     const wb = XLSX.utils.book_new()
+
+    // Add Summary sheet
+    const summarySummaryWs = XLSX.utils.json_to_sheet(summaryData)
+    XLSX.utils.book_append_sheet(wb, summarySummaryWs, 'Summary')
+
+    // Add Detailed records sheet
+    const ws = XLSX.utils.json_to_sheet(data)
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance')
 
     const filename = `attendance-report-${dateRange.start}-to-${dateRange.end}.xlsx`
@@ -328,6 +344,7 @@ export default function ReportsPage() {
                     <SelectValue placeholder="All Students" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="">All Students</SelectItem>
                     {students
                       .filter((student) => !selectedClass || student.class_id === selectedClass)
                       .map((student) => (
