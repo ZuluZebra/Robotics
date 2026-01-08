@@ -400,7 +400,7 @@ export default function ParentPortalPage() {
         )}
 
         {/* Notify Absence Card */}
-        {data?.class_id && (
+        {data?.class_id ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -512,6 +512,20 @@ export default function ParentPortalPage() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-amber-600" />
+                Notify Absence
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 text-sm">
+                Your child has not been assigned to a class yet. Please contact the school to enroll.
+              </p>
             </CardContent>
           </Card>
         )}
