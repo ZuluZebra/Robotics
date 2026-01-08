@@ -281,13 +281,6 @@ export default function ParentPortalPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-teal-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* DEBUG: Show what data we have - Mobile only */}
-        <div className="sm:hidden bg-yellow-50 border border-yellow-200 p-3 rounded text-xs text-yellow-800">
-          <strong>DEBUG (Mobile):</strong> <br/>
-          class_id={data?.class_id || 'NULL'} <br/>
-          class_name={data?.class_name || 'NULL'} <br/>
-          teacher_names={data?.teacher_names?.length || 0}
-        </div>
         {/* Header Card */}
         <Card className="overflow-hidden">
           <div className="bg-gradient-to-r from-teal-500 to-teal-600 px-6 py-8">

@@ -126,20 +126,8 @@ export async function getStudentDataByToken(token: string): Promise<{
       .single()
 
     if (studentError || !studentData) {
-      console.error('Student data fetch error:', studentError)
       return { success: false, error: 'Student not found' }
     }
-
-    // Log what we received to help debug
-    console.log('Student data retrieved:', {
-      id: studentData.id,
-      name: `${studentData.first_name} ${studentData.last_name}`,
-      class_id: studentData.class_id,
-      class_name: studentData.class_name,
-      school_id: studentData.school_id,
-      school_name: studentData.school_name,
-      teacher_names: studentData.teacher_names,
-    })
 
     return { success: true, data: studentData as ParentPortalData }
   } catch (error) {
