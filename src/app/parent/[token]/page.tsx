@@ -235,10 +235,10 @@ export default function ParentPortalPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-teal-100 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-8 text-center">
-            <Loader className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <Loader className="h-12 w-12 animate-spin text-teal-600 mx-auto mb-4" />
             <p className="text-gray-600">Loading student information...</p>
           </CardContent>
         </Card>
@@ -249,7 +249,7 @@ export default function ParentPortalPage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-teal-100 flex items-center justify-center p-4">
         <Card className="max-w-md w-full border-red-200">
           <CardContent className="pt-8">
             <div className="flex gap-3">
@@ -268,7 +268,7 @@ export default function ParentPortalPage() {
   // Success state
   if (!data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-teal-100 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-8 text-center">
             <p className="text-gray-600">No student data found</p>
@@ -279,15 +279,15 @@ export default function ParentPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-teal-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header Card */}
         <Card className="overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-8">
+          <div className="bg-gradient-to-r from-teal-500 to-teal-600 px-6 py-8">
             <h1 className="text-3xl font-bold text-white">
               {data.first_name} {data.last_name}
             </h1>
-            <div className="mt-2 space-y-1 text-blue-100">
+            <div className="mt-2 space-y-1 text-teal-100">
               <p>Grade: {data.grade}</p>
               {data.student_number && <p>Student ID: {data.student_number}</p>}
             </div>
@@ -299,7 +299,7 @@ export default function ParentPortalPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <School className="h-5 w-5 text-blue-600" />
+                <School className="h-5 w-5 text-teal-600" />
                 School Information
               </CardTitle>
             </CardHeader>
@@ -324,7 +324,7 @@ export default function ParentPortalPage() {
                 {data.school_email && (
                   <div>
                     <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-medium text-blue-600">{data.school_email}</p>
+                    <p className="font-medium text-teal-600">{data.school_email}</p>
                   </div>
                 )}
               </div>
@@ -337,7 +337,7 @@ export default function ParentPortalPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-indigo-600" />
+                <Calendar className="h-5 w-5 text-teal-600" />
                 Class Information
               </CardTitle>
             </CardHeader>
@@ -424,8 +424,8 @@ export default function ParentPortalPage() {
                           onClick={() => setAbsenceDate(session.date)}
                           className={`p-3 rounded-lg border-2 transition text-left ${
                             absenceDate === session.date
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 bg-white hover:border-blue-300'
+                              ? 'border-teal-500 bg-teal-50'
+                              : 'border-gray-200 bg-white hover:border-teal-300'
                           }`}
                         >
                           <div className="font-medium text-gray-900">{session.dayName}</div>
@@ -450,7 +450,7 @@ export default function ParentPortalPage() {
                   <select
                     value={absenceReason}
                     onChange={(e) => setAbsenceReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   >
                     <option value="">Select a reason...</option>
                     <option value="Sick">Sick</option>
@@ -647,7 +647,7 @@ export default function ParentPortalPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Email</span>
-                        <span className="font-medium text-blue-600">{parentEmail || '—'}</span>
+                        <span className="font-medium text-teal-600">{parentEmail || '—'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Phone</span>
@@ -699,9 +699,9 @@ export default function ParentPortalPage() {
             <CardContent className="space-y-8">
               {/* Monthly Cost */}
               {data.monthly_cost && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800 font-medium mb-1">Monthly Cost</p>
-                  <p className="text-3xl font-bold text-blue-900">
+                <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                  <p className="text-sm text-teal-800 font-medium mb-1">Monthly Cost</p>
+                  <p className="text-3xl font-bold text-teal-900">
                     R {data.monthly_cost.toFixed(2)}
                   </p>
                 </div>
@@ -711,8 +711,13 @@ export default function ParentPortalPage() {
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-900">Robotics League Banking Details</h3>
 
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 space-y-4 border border-blue-200">
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg p-4 space-y-4 border border-teal-200">
                   <div className="flex justify-between items-start">
+                    <span className="text-sm text-gray-600">Bank</span>
+                    <span className="font-medium text-right">First National Bank (FNB)</span>
+                  </div>
+
+                  <div className="flex justify-between items-start border-t border-teal-200 pt-3">
                     <span className="text-sm text-gray-600">Account Name</span>
                     <span className="font-medium text-right">Robotics League Gold Business Account</span>
                   </div>
@@ -722,12 +727,12 @@ export default function ParentPortalPage() {
                     <span className="font-mono font-medium text-right">62943486028</span>
                   </div>
 
-                  <div className="flex justify-between items-start border-t border-blue-200 pt-3">
+                  <div className="flex justify-between items-start border-t border-teal-200 pt-3">
                     <span className="text-sm text-gray-600">Branch Code</span>
                     <span className="font-mono font-medium text-right">250655</span>
                   </div>
 
-                  <div className="flex justify-between items-start border-t border-blue-200 pt-3">
+                  <div className="flex justify-between items-start border-t border-teal-200 pt-3">
                     <span className="text-sm text-gray-600">Payment Reference</span>
                     <span className="font-medium text-right">{data.first_name} {data.last_name}</span>
                   </div>
