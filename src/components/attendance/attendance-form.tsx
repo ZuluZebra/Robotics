@@ -15,6 +15,20 @@ import { toast } from 'sonner'
 import { Student, AttendanceRecord, ParentAbsenceNotification } from '@/types/models'
 import { Loader2 } from 'lucide-react'
 
+// Get local date as YYYY-MM-DD string (not UTC)
+const getLocalDateString = (date: Date = new Date()) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// Parse a date string in YYYY-MM-DD format to a local Date without timezone conversion
+const parseLocalDateString = (dateStr: string): Date => {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
 export function AttendanceForm() {
   const { user, isAdmin, isTeacher, assignedClasses } = useAuth()
   const [selectedSchool, setSelectedSchool] = useState('')
@@ -33,7 +47,7 @@ export function AttendanceForm() {
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(() =>
-    new Date().toISOString().split('T')[0]
+    getLocalDateString()
   )
   const [availableDates, setAvailableDates] = useState<Array<{ date: string; dayName: string }>>([])
 
@@ -61,7 +75,6 @@ export function AttendanceForm() {
 
     const dates: Array<{ date: string; dayName: string }> = []
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
 
     // Go back 30 days and find all matching schedule days
     for (let i = 0; i <= 30; i++) {
@@ -71,7 +84,7 @@ export function AttendanceForm() {
       const dayName = fullDayNames[dayOfWeek]
 
       if (normalizedScheduleDays.includes(dayName)) {
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = getLocalDateString(date)
         dates.push({
           date: dateStr,
           dayName: dayName,
@@ -307,8 +320,8 @@ export function AttendanceForm() {
               {availableDates.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {availableDates.slice(0, 3).map((dateOption) => {
-                    const date = new Date(dateOption.date)
-                    const isToday = dateOption.date === new Date().toISOString().split('T')[0]
+                    const date = parseLocalDateString(dateOption.date)
+                    const isToday = dateOption.date === getLocalDateString()
                     const isSelected = selectedDate === dateOption.date
 
                     return (
