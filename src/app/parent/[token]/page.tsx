@@ -18,6 +18,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { School, Calendar, Users, AlertCircle, Loader, CreditCard, Bell, X } from 'lucide-react'
 
+// Get local date as YYYY-MM-DD string (not UTC)
+const getLocalDateString = (date: Date = new Date()) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function ParentPortalPage() {
   const params = useParams()
   const token = params.token as string
@@ -74,7 +82,7 @@ export default function ParentPortalPage() {
         .map(([name]) => name)
 
       if (dayNames.length > 0 && data.schedule_days.includes(dayNames[0])) {
-        const dateStr = currentDate.toISOString().split('T')[0]
+        const dateStr = getLocalDateString(currentDate)
         const timeStr = data.start_time || 'TBA'
         sessions.push({
           date: dateStr,
