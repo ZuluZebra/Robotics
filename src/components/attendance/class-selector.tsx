@@ -15,7 +15,7 @@ import { formatSchedule, formatTime } from '@/lib/utils'
 
 interface ClassSelectorProps {
   onSchoolChange: (schoolId: string) => void
-  onClassChange: (classId: string) => void
+  onClassChange: (classId: string, classData?: Class) => void
   selectedSchool: string
   selectedClass: string
   teacherMode?: boolean
@@ -60,7 +60,7 @@ export function ClassSelector({
       setClasses(assignedClasses)
       // Auto-select first class if only one exists
       if (assignedClasses.length === 1 && !selectedClass) {
-        onClassChange(assignedClasses[0].id)
+        onClassChange(assignedClasses[0].id, assignedClasses[0])
       }
     }
   }, [teacherMode, assignedClasses, selectedClass, onClassChange])
@@ -115,7 +115,14 @@ export function ClassSelector({
 
       <div className="space-y-2">
         <Label htmlFor="class-select">Class</Label>
-        <Select value={selectedClass} onValueChange={onClassChange} disabled={!teacherMode && !selectedSchool}>
+        <Select
+          value={selectedClass}
+          onValueChange={(classId) => {
+            const classData = classes.find(c => c.id === classId)
+            onClassChange(classId, classData)
+          }}
+          disabled={!teacherMode && !selectedSchool}
+        >
           <SelectTrigger id="class-select">
             <SelectValue placeholder="Select a class..." />
           </SelectTrigger>
