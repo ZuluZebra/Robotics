@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { Student, AttendanceRecord, ParentAbsenceNotification } from '@/types/models'
 import { Loader2 } from 'lucide-react'
@@ -37,6 +36,7 @@ export function AttendanceForm() {
     new Date().toISOString().split('T')[0]
   )
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [availableDates, setAvailableDates] = useState<Array<{ date: string; dayName: string }>>([])
 
   // Parent notifications state
   const [parentNotifications, setParentNotifications] = useState<
@@ -44,16 +44,6 @@ export function AttendanceForm() {
   >({})
 
   const supabase = createClient()
-
-  // Get min date (30 days ago)
-  const getMinDate = () => {
-    const date = new Date()
-    date.setDate(date.getDate() - 30)
-    return date.toISOString().split('T')[0]
-  }
-
-  // Get today's date string
-  const getTodayDate = () => new Date().toISOString().split('T')[0]
 
   // Format date for display
   const formatDateDisplay = (dateStr: string) => {
@@ -64,6 +54,45 @@ export function AttendanceForm() {
       month: 'long',
       day: 'numeric',
     })
+  }
+
+  // Calculate available dates based on class schedule
+  const calculateAvailableDates = (scheduleDays: string[]) => {
+    if (!scheduleDays || scheduleDays.length === 0) return []
+
+    const dayMap: Record<string, number> = {
+      Sunday: 0,
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6,
+    }
+
+    const dates: Array<{ date: string; dayName: string }> = []
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Go back 30 days and find all matching schedule days
+    for (let i = 0; i <= 30; i++) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+      const dayOfWeek = date.getDay()
+      const dayNames = Object.entries(dayMap)
+        .filter(([_, dayNum]) => dayNum === dayOfWeek)
+        .map(([name]) => name)
+
+      if (dayNames.length > 0 && scheduleDays.includes(dayNames[0])) {
+        const dateStr = date.toISOString().split('T')[0]
+        dates.push({
+          date: dateStr,
+          dayName: dayNames[0],
+        })
+      }
+    }
+
+    return dates
   }
 
   // Determine if we should use teacher mode
@@ -261,7 +290,17 @@ export function AttendanceForm() {
             selectedSchool={selectedSchool}
             selectedClass={selectedClass}
             onSchoolChange={setSelectedSchool}
-            onClassChange={setSelectedClass}
+            onClassChange={(classId, classData) => {
+              setSelectedClass(classId)
+              if (classData?.schedule_days) {
+                const dates = calculateAvailableDates(classData.schedule_days)
+                setAvailableDates(dates)
+                // Auto-select most recent date
+                if (dates.length > 0) {
+                  setSelectedDate(dates[0].date)
+                }
+              }
+            }}
             teacherMode={shouldUseTeacherMode}
             assignedClasses={assignedClasses}
           />
@@ -289,21 +328,33 @@ export function AttendanceForm() {
               <CardDescription>
                 Marking attendance for {formatDateDisplay(selectedDate)}
               </CardDescription>
-              {showDatePicker && (
-                <div className="mt-4 pt-4 border-t space-y-2">
-                  <Label htmlFor="attendance-date">Select Date</Label>
-                  <Input
-                    id="attendance-date"
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    min={getMinDate()}
-                    max={getTodayDate()}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500">
-                    You can mark attendance for up to 30 days in the past
-                  </p>
+              {showDatePicker && availableDates.length > 0 && (
+                <div className="mt-4 pt-4 border-t space-y-3">
+                  <p className="text-sm font-medium text-gray-700">Select a class date:</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {availableDates.map((dateOption) => (
+                      <button
+                        key={dateOption.date}
+                        onClick={() => {
+                          setSelectedDate(dateOption.date)
+                          setShowDatePicker(false)
+                        }}
+                        className={`p-2 rounded-lg border-2 transition text-sm text-center ${
+                          selectedDate === dateOption.date
+                            ? 'border-teal-500 bg-teal-50'
+                            : 'border-gray-300 bg-white hover:border-teal-300'
+                        }`}
+                      >
+                        <div className="font-medium text-gray-900">{dateOption.dayName}</div>
+                        <div className="text-xs text-gray-600">
+                          {new Date(dateOption.date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardHeader>
