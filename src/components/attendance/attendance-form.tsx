@@ -60,15 +60,16 @@ export function AttendanceForm() {
   const calculateAvailableDates = (scheduleDays: string[]) => {
     if (!scheduleDays || scheduleDays.length === 0) return []
 
-    const dayMap: Record<string, number> = {
-      Sunday: 0,
-      Monday: 1,
-      Tuesday: 2,
-      Wednesday: 3,
-      Thursday: 4,
-      Friday: 5,
-      Saturday: 6,
-    }
+    const fullDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+    // Normalize schedule days to handle different formats (full names, abbreviations, lowercase)
+    const normalizedScheduleDays = scheduleDays.map((day) => {
+      const lower = day.toLowerCase()
+      // Handle abbreviations
+      const abbrev = lower.substring(0, 3)
+      const fullDay = fullDayNames.find((d) => d.toLowerCase().startsWith(abbrev))
+      return fullDay || day // Fall back to original if no match
+    })
 
     const dates: Array<{ date: string; dayName: string }> = []
     const today = new Date()
@@ -79,15 +80,13 @@ export function AttendanceForm() {
       const date = new Date(today)
       date.setDate(date.getDate() - i)
       const dayOfWeek = date.getDay()
-      const dayNames = Object.entries(dayMap)
-        .filter(([_, dayNum]) => dayNum === dayOfWeek)
-        .map(([name]) => name)
+      const dayName = fullDayNames[dayOfWeek]
 
-      if (dayNames.length > 0 && scheduleDays.includes(dayNames[0])) {
+      if (normalizedScheduleDays.includes(dayName)) {
         const dateStr = date.toISOString().split('T')[0]
         dates.push({
           date: dateStr,
-          dayName: dayNames[0],
+          dayName: dayName,
         })
       }
     }
