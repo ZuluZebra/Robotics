@@ -308,6 +308,12 @@ export function AttendanceForm() {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Prominent Date Display */}
+              <div className="bg-teal-50 border-2 border-teal-300 rounded-lg p-4 text-center">
+                <p className="text-sm text-teal-700 font-medium">Marking Attendance For</p>
+                <p className="text-2xl font-bold text-teal-900 mt-1">{formatDateDisplay(selectedDate)}</p>
+              </div>
+
               {/* Search */}
               <StudentSearch
                 value={searchQuery}
