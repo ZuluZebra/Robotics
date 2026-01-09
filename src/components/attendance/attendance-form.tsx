@@ -293,9 +293,12 @@ export function AttendanceForm() {
               setSelectedClass(classId)
               if (classData?.schedule_days) {
                 const dates = calculateAvailableDates(classData.schedule_days)
+                console.log('DEBUG - Schedule Days:', classData.schedule_days)
+                console.log('DEBUG - Calculated Dates:', dates)
                 setAvailableDates(dates)
                 // Auto-select most recent date
                 if (dates.length > 0) {
+                  console.log('DEBUG - Selected Date:', dates[0].date, dates[0].dayName)
                   setSelectedDate(dates[0].date)
                 }
               }
