@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
 
 export default function ClassesPage() {
   const [schools, setSchools] = useState<School[]>([])
-  const [classes, setClasses] = useState<Class[]>([])
+  const [classes, setClasses] = useState<(Class & { teachers?: string[] })[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedClass, setSelectedClass] = useState<Class | null>(null)
@@ -56,7 +56,29 @@ export default function ClassesPage() {
         .order('name')
 
       if (error) throw error
-      setClasses(data || [])
+
+      // Fetch teachers for each class
+      const classesWithTeachers = await Promise.all(
+        (data || []).map(async (schoolClass: Class) => {
+          const { data: teacherData, error: teacherError } = await supabase
+            .from('teacher_classes')
+            .select('teacher_id, user_profiles(full_name)')
+            .eq('class_id', schoolClass.id)
+
+          if (teacherError) {
+            console.error('Error fetching teachers:', teacherError)
+            return { ...schoolClass, teachers: [] }
+          }
+
+          const teacherNames = teacherData
+            ?.map((tc: any) => tc.user_profiles?.full_name)
+            .filter(Boolean) || []
+
+          return { ...schoolClass, teachers: teacherNames }
+        })
+      )
+
+      setClasses(classesWithTeachers)
     } catch (error) {
       console.error('Error fetching classes:', error)
       toast.error('Failed to load classes')
@@ -181,6 +203,13 @@ export default function ClassesPage() {
             columns={[
               { header: 'Name', accessor: 'name' },
               { header: 'Grade', accessor: 'grade' },
+              {
+                header: 'Teachers',
+                accessor: (schoolClass: any) =>
+                  schoolClass.teachers && schoolClass.teachers.length > 0
+                    ? schoolClass.teachers.join(', ')
+                    : '—',
+              },
               {
                 header: 'Schedule',
                 accessor: (schoolClass: Class) =>
