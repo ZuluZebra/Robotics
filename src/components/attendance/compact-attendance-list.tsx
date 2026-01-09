@@ -53,8 +53,8 @@ export function CompactAttendanceList({
 
   return (
     <div className="space-y-1 border rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-100 font-semibold text-sm border-b sticky top-0">
+      {/* Header - Hidden on Mobile */}
+      <div className="hidden md:grid md:grid-cols-12 md:gap-2 px-4 py-3 bg-gray-100 font-semibold text-sm border-b sticky top-0">
         <div className="col-span-4">Name</div>
         <div className="col-span-2">Grade</div>
         <div className="col-span-3">Status</div>
@@ -72,13 +72,13 @@ export function CompactAttendanceList({
 
           return (
             <div key={student.id}>
-              {/* Compact Row */}
+              {/* Compact Row - Desktop */}
               <button
                 onClick={() => setExpandedStudentId(isExpanded ? null : student.id)}
-                className={`w-full grid grid-cols-12 gap-2 px-4 py-3 transition text-left ${getRowColor(
+                className={`hidden md:grid md:grid-cols-12 md:gap-2 w-full px-4 py-3 transition text-left ${getRowColor(
                   student.id,
                   isPresent
-                )} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                )} focus:outline-none focus:ring-2 focus:ring-teal-500`}
               >
                 {/* Name */}
                 <div className="col-span-4">
@@ -142,6 +142,65 @@ export function CompactAttendanceList({
                   />
                 </div>
               </button>
+
+              {/* Mobile Row - Card Layout */}
+              <button
+                onClick={() => setExpandedStudentId(isExpanded ? null : student.id)}
+                className={`md:hidden w-full px-4 py-4 transition text-left ${getRowColor(
+                  student.id,
+                  isPresent
+                )} focus:outline-none focus:ring-2 focus:ring-teal-500`}
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900 flex items-center gap-2">
+                      <span className="truncate">{`${student.first_name} ${student.last_name}`}</span>
+                      {hasNotification && (
+                        <Bell className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">#{student.student_number} • Grade {student.grade}</div>
+                  </div>
+                  <ChevronDown
+                    className={`h-5 w-5 text-gray-600 transition flex-shrink-0 ${
+                      isExpanded ? 'transform rotate-180' : ''
+                    }`}
+                  />
+                </div>
+                <span
+                  className={`inline-block text-sm font-semibold px-3 py-1 rounded ${
+                    hasNotification
+                      ? 'bg-amber-200 text-amber-900'
+                      : isPresent
+                        ? 'bg-green-200 text-green-900'
+                        : 'bg-red-200 text-red-900'
+                  }`}
+                >
+                  {getStatusLabel(student.id, isPresent)}
+                </span>
+              </button>
+
+              {/* Mobile Action Buttons */}
+              {isExpanded && (
+                <div className="md:hidden px-4 py-3 bg-gray-100 border-t flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={isPresent ? 'default' : 'outline'}
+                    onClick={() => onPresentChange(student.id, true)}
+                    className="flex-1 text-sm"
+                  >
+                    ✓ Here
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={!isPresent ? 'destructive' : 'outline'}
+                    onClick={() => onPresentChange(student.id, false)}
+                    className="flex-1 text-sm"
+                  >
+                    ✕ Absent
+                  </Button>
+                </div>
+              )}
 
               {/* Expanded Details */}
               {isExpanded && (
