@@ -83,7 +83,7 @@ export default function ReportsPage() {
 
   const [selectedSchool, setSelectedSchool] = useState<string>('')
   const [selectedClass, setSelectedClass] = useState<string>('')
-  const [selectedStudent, setSelectedStudent] = useState<string>('')
+  const [selectedStudent, setSelectedStudent] = useState<string>('__all__')
 
   const supabase = createClient()
 
@@ -127,7 +127,7 @@ export default function ReportsPage() {
         if (selectedClass) {
           query = query.eq('class_id', selectedClass)
         }
-        if (selectedStudent) {
+        if (selectedStudent && selectedStudent !== '__all__') {
           query = query.eq('student_id', selectedStudent)
         }
 
@@ -344,7 +344,7 @@ export default function ReportsPage() {
                     <SelectValue placeholder="All Students" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Students</SelectItem>
+                    <SelectItem value="__all__">All Students</SelectItem>
                     {students
                       .filter((student) => !selectedClass || student.class_id === selectedClass)
                       .map((student) => (
