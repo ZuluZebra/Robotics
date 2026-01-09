@@ -196,19 +196,19 @@ export function CommissionReport({ dateRange }: CommissionReportProps) {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2">Student</th>
-                        <th className="text-right py-2">Absences</th>
-                        <th className="text-left py-2 text-xs">First</th>
-                        <th className="text-left py-2 text-xs">Last</th>
+                        <th className="text-left py-3 px-3">Student</th>
+                        <th className="text-right py-3 px-3">Absences</th>
+                        <th className="text-left py-3 px-3 text-xs">First Absence</th>
+                        <th className="text-left py-3 px-3 text-xs">Last Absence</th>
                       </tr>
                     </thead>
                     <tbody>
                       {classGroup.students.map((student: any) => (
-                        <tr key={student.student_id} className="border-b">
-                          <td className="py-2">{student.student_name}</td>
-                          <td className="py-2 text-right">{student.total_absences}</td>
-                          <td className="py-2 text-xs">{student.first_absence_date ? new Date(student.first_absence_date).toLocaleDateString() : '-'}</td>
-                          <td className="py-2 text-xs">{student.last_absence_date ? new Date(student.last_absence_date).toLocaleDateString() : '-'}</td>
+                        <tr key={student.student_id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-3">{student.student_name}</td>
+                          <td className="py-3 px-3 text-right">{student.total_absences}</td>
+                          <td className="py-3 px-3 text-xs">{student.first_absence_date ? new Date(student.first_absence_date).toLocaleDateString() : '-'}</td>
+                          <td className="py-3 px-3 text-xs">{student.last_absence_date ? new Date(student.last_absence_date).toLocaleDateString() : '-'}</td>
                         </tr>
                       ))}
                     </tbody>
