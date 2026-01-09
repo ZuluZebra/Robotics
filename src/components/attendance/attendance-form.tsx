@@ -35,7 +35,6 @@ export function AttendanceForm() {
   const [selectedDate, setSelectedDate] = useState(() =>
     new Date().toISOString().split('T')[0]
   )
-  const [showDatePicker, setShowDatePicker] = useState(false)
   const [availableDates, setAvailableDates] = useState<Array<{ date: string; dayName: string }>>([])
 
   // Parent notifications state
@@ -44,17 +43,6 @@ export function AttendanceForm() {
   >({})
 
   const supabase = createClient()
-
-  // Format date for display
-  const formatDateDisplay = (dateStr: string) => {
-    const date = new Date(dateStr + 'T00:00:00')
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-  }
 
   // Calculate available dates based on class schedule
   const calculateAvailableDates = (scheduleDays: string[]) => {
@@ -293,12 +281,9 @@ export function AttendanceForm() {
               setSelectedClass(classId)
               if (classData?.schedule_days) {
                 const dates = calculateAvailableDates(classData.schedule_days)
-                console.log('DEBUG - Schedule Days:', classData.schedule_days)
-                console.log('DEBUG - Calculated Dates:', dates)
                 setAvailableDates(dates)
                 // Auto-select most recent date
                 if (dates.length > 0) {
-                  console.log('DEBUG - Selected Date:', dates[0].date, dates[0].dayName)
                   setSelectedDate(dates[0].date)
                 }
               }
@@ -317,56 +302,52 @@ export function AttendanceForm() {
           {/* Attendance Marking */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between mb-2">
-                <CardTitle>Students ({students.length})</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDatePicker(!showDatePicker)}
-                >
-                  {showDatePicker ? 'Hide Date' : 'Mark Different Date'}
-                </Button>
-              </div>
-              <CardDescription>
-                Marking attendance for {formatDateDisplay(selectedDate)}
-              </CardDescription>
-              {showDatePicker && availableDates.length > 0 && (
-                <div className="mt-4 pt-4 border-t space-y-3">
-                  <p className="text-sm font-medium text-gray-700">Select a class date:</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {availableDates.map((dateOption) => (
+              <CardTitle>Select Class Session</CardTitle>
+              <CardDescription>Choose which class session to mark attendance for</CardDescription>
+              {availableDates.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {availableDates.slice(0, 3).map((dateOption) => {
+                    const date = new Date(dateOption.date)
+                    const isToday = dateOption.date === new Date().toISOString().split('T')[0]
+                    const isSelected = selectedDate === dateOption.date
+
+                    return (
                       <button
                         key={dateOption.date}
-                        onClick={() => {
-                          setSelectedDate(dateOption.date)
-                          setShowDatePicker(false)
-                        }}
-                        className={`p-2 rounded-lg border-2 transition text-sm text-center ${
-                          selectedDate === dateOption.date
+                        onClick={() => setSelectedDate(dateOption.date)}
+                        className={`w-full p-4 rounded-lg border-2 transition text-left ${
+                          isSelected
                             ? 'border-teal-500 bg-teal-50'
-                            : 'border-gray-300 bg-white hover:border-teal-300'
+                            : 'border-gray-200 bg-white hover:border-teal-300'
                         }`}
                       >
-                        <div className="font-medium text-gray-900">{dateOption.dayName}</div>
-                        <div className="text-xs text-gray-600">
-                          {new Date(dateOption.date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-gray-900">{dateOption.dayName}</div>
+                            <div className="text-sm text-gray-600">
+                              {date.toLocaleDateString('en-US', {
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </div>
+                          </div>
+                          {isToday && (
+                            <span className="text-xs font-semibold px-2 py-1 bg-teal-100 text-teal-700 rounded">
+                              Today
+                            </span>
+                          )}
+                          {isSelected && (
+                            <span className="text-teal-600">✓</span>
+                          )}
                         </div>
                       </button>
-                    ))}
-                  </div>
+                    )
+                  })}
                 </div>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Prominent Date Display */}
-              <div className="bg-teal-50 border-2 border-teal-300 rounded-lg p-4 text-center">
-                <p className="text-sm text-teal-700 font-medium">Marking Attendance For</p>
-                <p className="text-2xl font-bold text-teal-900 mt-1">{formatDateDisplay(selectedDate)}</p>
-              </div>
-
               {/* Search */}
               <StudentSearch
                 value={searchQuery}
