@@ -52,6 +52,21 @@ export function ClassForm({
   const supabase = createClient()
 
   useEffect(() => {
+    // Update form data when schoolClass prop changes
+    if (schoolClass) {
+      setFormData({
+        name: schoolClass.name,
+        grade: schoolClass.grade,
+        start_time: schoolClass.start_time || '',
+        end_time: schoolClass.end_time || '',
+        room_number: schoolClass.room_number || '',
+        capacity: schoolClass.capacity || '',
+      })
+      setScheduleDays(schoolClass.schedule_days || [])
+    }
+  }, [schoolClass])
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const { data: schoolsData, error: schoolsError } = await supabase
