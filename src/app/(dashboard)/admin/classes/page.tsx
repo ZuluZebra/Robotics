@@ -9,8 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Class, School } from '@/types/models'
-import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { Plus, Edit2, Trash2, FileDown } from 'lucide-react'
 import { formatSchedule, formatTime } from '@/lib/utils'
+import { generateClassesPDF, SchoolWithClasses } from '@/lib/pdf/classes-export'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,7 @@ export default function ClassesPage() {
   const [schools, setSchools] = useState<School[]>([])
   const [classes, setClasses] = useState<(Class & { teachers?: string[] })[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [selectedClass, setSelectedClass] = useState<Class | null>(null)
   const [selectedSchool, setSelectedSchool] = useState<string>('')
@@ -128,6 +130,93 @@ export default function ClassesPage() {
     }
   }
 
+  const fetchAllSchoolsWithClasses = async (): Promise<SchoolWithClasses[]> => {
+    try {
+      // Fetch all active schools
+      const { data: schoolsData, error: schoolsError } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+
+      if (schoolsError) throw schoolsError
+      if (!schoolsData || schoolsData.length === 0) {
+        throw new Error('No schools found')
+      }
+
+      // For each school, fetch classes and enrich with teachers and student counts
+      const schoolsWithClasses = await Promise.all(
+        schoolsData.map(async (school: School) => {
+          // Fetch classes for this school
+          const { data: classesData, error: classesError } = await supabase
+            .from('classes')
+            .select('*')
+            .eq('school_id', school.id)
+            .order('name')
+
+          if (classesError) throw classesError
+
+          // For each class, fetch teachers and student count in parallel
+          const classesWithDetails = await Promise.all(
+            (classesData || []).map(async (cls: Class) => {
+              // Fetch teachers
+              const { data: teacherData } = await supabase
+                .from('teacher_classes')
+                .select('teacher_id, user_profiles(full_name)')
+                .eq('class_id', cls.id)
+
+              const teachers = (teacherData || [])
+                .map((tc: any) => tc.user_profiles?.full_name)
+                .filter(Boolean)
+
+              // Fetch student count
+              const { count: studentCount } = await supabase
+                .from('students')
+                .select('*', { count: 'exact', head: true })
+                .eq('class_id', cls.id)
+
+              return {
+                ...cls,
+                teachers,
+                studentCount: studentCount || 0,
+              }
+            })
+          )
+
+          return {
+            ...school,
+            classes: classesWithDetails,
+          }
+        })
+      )
+
+      return schoolsWithClasses
+    } catch (error) {
+      console.error('Error fetching schools with classes:', error)
+      throw error
+    }
+  }
+
+  const handleExportToPDF = async () => {
+    setExporting(true)
+    const toastId = toast.loading('Generating PDF...')
+
+    try {
+      const schoolsData = await fetchAllSchoolsWithClasses()
+      generateClassesPDF(schoolsData, 'classes-report.pdf')
+      toast.dismiss(toastId)
+      toast.success('PDF exported successfully!')
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      toast.dismiss(toastId)
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to export PDF'
+      )
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const selectedSchoolData = schools.find((s) => s.id === selectedSchool)
 
   return (
@@ -137,15 +226,25 @@ export default function ClassesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Classes</h1>
           <p className="text-gray-600 mt-2">Manage classes in the system</p>
         </div>
-        <Button
-          onClick={() => {
-            setSelectedClass(null)
-            setShowForm(true)
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Class
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExportToPDF}
+            disabled={exporting}
+            variant="outline"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Export to PDF
+          </Button>
+          <Button
+            onClick={() => {
+              setSelectedClass(null)
+              setShowForm(true)
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Class
+          </Button>
+        </div>
       </div>
 
       {/* School Selector */}
