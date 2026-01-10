@@ -18,9 +18,12 @@ import { formatSchedule, formatTime } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
+const ITEMS_PER_PAGE = 50
+
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -29,6 +32,7 @@ export default function StudentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [shareLink, setShareLink] = useState('')
   const [generatingLink, setGeneratingLink] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const supabase = createClient()
 
   const fetchStudents = async () => {
@@ -37,14 +41,39 @@ export default function StudentsPage() {
         .from('students')
         .select('*')
         .order('last_name, first_name')
+        .range(0, ITEMS_PER_PAGE - 1)
 
       if (error) throw error
       setStudents(data || [])
+      setHasMore((data?.length || 0) >= ITEMS_PER_PAGE)
     } catch (error) {
       console.error('Error fetching students:', error)
       toast.error('Failed to load students')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadMoreStudents = async () => {
+    if (loadingMore || !hasMore) return
+
+    setLoadingMore(true)
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('last_name, first_name')
+        .range(students.length, students.length + ITEMS_PER_PAGE - 1)
+
+      if (error) throw error
+      if (data) {
+        setStudents((prev) => [...prev, ...data])
+        setHasMore(data.length >= ITEMS_PER_PAGE)
+      }
+    } catch (error) {
+      console.error('Error loading more students:', error)
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -383,6 +412,22 @@ export default function StudentsPage() {
               </div>
             )}
           />
+          {hasMore && (
+            <div className="flex justify-center pt-4">
+              <Button
+                onClick={loadMoreStudents}
+                disabled={loadingMore}
+                variant="outline"
+              >
+                {loadingMore ? 'Loading...' : `Load More (${students.length} loaded)`}
+              </Button>
+            </div>
+          )}
+          {!hasMore && students.length > 0 && (
+            <div className="flex justify-center pt-4 text-sm text-gray-500">
+              All {students.length} students loaded
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

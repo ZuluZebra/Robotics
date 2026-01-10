@@ -155,7 +155,7 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
 
     console.log('Validation passed, starting import...')
     setLoading(true)
-    toast.loading('Importing students...')
+    const toastId = toast.loading('Importing students...')
     const errors: ImportResult['errors'] = []
     let successCount = 0
 
@@ -308,6 +308,9 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
 
       console.log('Import complete:', { successCount, failed: errors.length })
 
+      // Dismiss loading toast
+      toast.dismiss(toastId)
+
       if (errors.length === 0) {
         toast.success(`Successfully imported ${successCount} students!`)
       } else {
@@ -317,6 +320,7 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
       }
     } catch (error) {
       console.error('Import error:', error)
+      toast.dismiss(toastId)
       toast.error('Import failed: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setLoading(false)
