@@ -138,9 +138,12 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
       columnNames.map(col => col.trim().toLowerCase())
     )
 
-    const hasStudentNameColumn = normalizedColumns.has('student name') || normalizedColumns.has('student_name')
+    const hasStudentNameColumn = normalizedColumns.has('student name') ||
+                                  normalizedColumns.has('student name & surname') ||
+                                  normalizedColumns.has('student_name')
     const hasFirstNameColumn = normalizedColumns.has('first_name')
-    const hasNewFormat = normalizedColumns.has('email address') && normalizedColumns.has('parent/guardian name')
+    const hasNewFormat = (normalizedColumns.has('email address') || normalizedColumns.has('student name & surname')) &&
+                         (normalizedColumns.has('parent/guardian name') || normalizedColumns.has('parent/guardian name & surname'))
 
     console.log('Column detection:', { hasStudentNameColumn, hasFirstNameColumn, hasNewFormat, normalizedColumns: Array.from(normalizedColumns) })
 
@@ -191,32 +194,32 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
             return ''
           }
 
-          // Handle new format (Email Address, Student Name, Grade, Parent/Guardian Name, Parent/Guardian Contact Nr)
+          // Handle new format (Email Address, Student Name & Surname, Student Grade and Class, Parent/Guardian Name & Surname, Parent/Guardian Contact Number)
           if (hasNewFormat) {
-            const studentName = getRowValue(row, 'Student Name', 'student name')
+            const studentName = getRowValue(row, 'Student Name & Surname', 'Student Name', 'student name')
             const nameParts = studentName.trim().split(/\s+/)
             if (nameParts.length < 2) {
               throw new Error(`Invalid student name format: "${studentName}" (expected "First Last")`)
             }
             firstName = nameParts[0]
             lastName = nameParts.slice(1).join(' ')
-            grade = (getRowValue(row, 'What grade is your child in 2025?', 'Grade', 'grade') || '').toString().trim()
+            grade = (getRowValue(row, 'Student Grade and Class', 'What grade is your child in 2025?', 'Grade', 'grade') || '').toString().trim()
             parentEmail = getRowValue(row, 'Email Address', 'email address')
-            parentName = getRowValue(row, 'Parent/Guardian Name', 'parent/guardian name', 'Parent Name')
-            parentPhone = getRowValue(row, 'Parent/Guardian Contact Nr', 'parent/guardian contact nr', 'Parent Phone')
+            parentName = getRowValue(row, 'Parent/Guardian Name & Surname', 'Parent/Guardian Name', 'parent/guardian name', 'Parent Name')
+            parentPhone = getRowValue(row, 'Parent/Guardian Contact Number', 'Parent/Guardian Contact Nr', 'parent/guardian contact nr', 'Parent Phone')
           } else if (hasStudentNameColumn && !hasFirstNameColumn) {
             // Old Student Name format
-            const studentName = getRowValue(row, 'Student Name', 'student name')
+            const studentName = getRowValue(row, 'Student Name & Surname', 'Student Name', 'student name')
             const nameParts = studentName.trim().split(/\s+/)
             if (nameParts.length < 2) {
               throw new Error(`Invalid student name format: "${studentName}" (expected "First Last")`)
             }
             firstName = nameParts[0]
             lastName = nameParts.slice(1).join(' ')
-            grade = (getRowValue(row, 'Grade', 'grade') || '').toString()
-            parentName = getRowValue(row, 'Parent Name', 'parent_name')
-            parentEmail = getRowValue(row, 'Parent Email', 'parent_email')
-            parentPhone = getRowValue(row, 'Parent Phone', 'parent_phone')
+            grade = (getRowValue(row, 'Student Grade and Class', 'Grade', 'grade') || '').toString()
+            parentName = getRowValue(row, 'Parent/Guardian Name & Surname', 'Parent Name', 'parent_name')
+            parentEmail = getRowValue(row, 'Email Address', 'Parent Email', 'parent_email')
+            parentPhone = getRowValue(row, 'Parent/Guardian Contact Number', 'Parent Phone', 'parent_phone')
           } else {
             // Standard CSV format
             firstName = getRowValue(row, 'first_name')
@@ -376,7 +379,7 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
               Supported formats:
             </p>
             <p className="text-sm text-gray-500">
-              • New format: Email Address, Student Name, What grade is your child in 2025?, Parent/Guardian Name, Parent/Guardian Contact Nr
+              • New format: Email Address, Student Name & Surname, Student Grade and Class, Parent/Guardian Name & Surname, Parent/Guardian Contact Number
             </p>
             <p className="text-sm text-gray-500">
               • CSV format: first_name, last_name, grade, student_number, parent_name, parent_email, parent_phone
