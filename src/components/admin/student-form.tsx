@@ -104,6 +104,7 @@ export function StudentForm({ student, onSuccess, onCancel }: StudentFormProps) 
         school_id: selectedSchool,
         class_id: selectedClass || null,
         ...formData,
+        student_number: formData.student_number || null,
         date_of_birth: formData.date_of_birth || null,
         monthly_cost: formData.monthly_cost ? parseFloat(formData.monthly_cost.toString()) : null,
       }
