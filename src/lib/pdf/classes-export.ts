@@ -34,7 +34,7 @@ export function generateClassesPDF(
 
   let isFirstPage = true
 
-  schools.forEach((school, schoolIndex) => {
+  schools.forEach((school) => {
     // Add new page for each school (except first)
     if (!isFirstPage) {
       doc.addPage()
