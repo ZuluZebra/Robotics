@@ -133,17 +133,11 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
     console.log('First row columns:', Object.keys(firstRow))
     const hasStudentNameColumn = 'Student Name' in firstRow || 'student_name' in firstRow
     const hasFirstNameColumn = 'first_name' in firstRow
+    const hasNewFormat = 'Email Address' in firstRow && 'Parent/Guardian Name' in firstRow
 
-    if (!hasFirstNameColumn && !hasStudentNameColumn) {
+    if (!hasFirstNameColumn && !hasStudentNameColumn && !hasNewFormat) {
       console.error('No student name column found')
-      toast.error('Could not find student name columns. Use "first_name" and "last_name" or "Student Name"')
-      return
-    }
-
-    // If using "Student Name" format and no class selected
-    if (hasStudentNameColumn && !selectedClass) {
-      console.error('Excel format detected but no class selected')
-      toast.error('Please select a class to import these students into')
+      toast.error('Could not find student name columns. Check your file format.')
       return
     }
 
@@ -154,6 +148,17 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
     let successCount = 0
 
     try {
+      // Get all schools for lookup
+      const { data: schoolsData } = await supabase
+        .from('schools')
+        .select('id, name')
+        .eq('is_active', true)
+
+      const defaultSchool = schoolsData?.[0]
+      if (!defaultSchool) {
+        throw new Error('No active schools found')
+      }
+
       for (let i = 0; i < data.length; i++) {
         const row = data[i]
 
@@ -161,9 +166,25 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
           let firstName = ''
           let lastName = ''
           let grade = ''
+          let parentEmail = ''
+          let parentName = ''
+          let parentPhone = ''
 
-          // Parse Student Name format (like "Righardt Coetzee")
-          if (hasStudentNameColumn && !hasFirstNameColumn) {
+          // Handle new format (Email Address, Student Name, Grade, Parent/Guardian Name, Parent/Guardian Contact Nr)
+          if (hasNewFormat) {
+            const studentName = row['Student Name'] || ''
+            const nameParts = studentName.trim().split(/\s+/)
+            if (nameParts.length < 2) {
+              throw new Error(`Invalid student name format: "${studentName}" (expected "First Last")`)
+            }
+            firstName = nameParts[0]
+            lastName = nameParts.slice(1).join(' ')
+            grade = (row['What grade is your child in 2025?'] || row['Grade'] || '').toString().trim()
+            parentEmail = row['Email Address'] || ''
+            parentName = row['Parent/Guardian Name'] || ''
+            parentPhone = row['Parent/Guardian Contact Nr'] || ''
+          } else if (hasStudentNameColumn && !hasFirstNameColumn) {
+            // Old Student Name format
             const studentName = row['Student Name'] || ''
             const nameParts = studentName.trim().split(/\s+/)
             if (nameParts.length < 2) {
@@ -172,43 +193,43 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
             firstName = nameParts[0]
             lastName = nameParts.slice(1).join(' ')
             grade = (row['Grade'] || '').toString()
+            parentName = row['Parent Name'] || row['parent_name'] || ''
+            parentEmail = row['Parent Email'] || row['parent_email'] || ''
+            parentPhone = row['Parent Phone'] || row['parent_phone'] || ''
           } else {
             // Standard CSV format
             firstName = row.first_name || ''
             lastName = row.last_name || ''
             grade = row.grade || ''
+            parentName = row.parent_name || ''
+            parentEmail = row.parent_email || ''
+            parentPhone = row.parent_phone || ''
           }
 
           if (!firstName || !lastName) {
             throw new Error('Missing student name')
           }
 
-          // Get school ID if provided
-          let schoolId = row.school_id || null
-          if (row.school_name && !schoolId) {
-            const { data: schoolData } = await supabase
-              .from('schools')
-              .select('id')
-              .eq('name', row.school_name)
-              .single()
+          // Find class based on grade
+          let classId = selectedClass || null
 
-            if (!schoolData) {
-              throw new Error(`School "${row.school_name}" not found`)
-            }
-            schoolId = schoolData.id
-          }
-
-          // Use selected class or from row
-          let classId = selectedClass || row.class_id || null
-          if (row.class_name && !classId) {
+          if (!classId && grade) {
             const { data: classData } = await supabase
               .from('classes')
-              .select('id')
-              .eq('name', row.class_name)
-              .single()
+              .select('id, grade, name')
+              .eq('is_active', true)
+              .eq('school_id', defaultSchool.id)
 
-            if (classData) {
-              classId = classData.id
+            // Find matching class by grade
+            const matchingClass = classData?.find(
+              (c) => c.grade.toLowerCase().trim() === grade.toLowerCase().trim()
+            )
+
+            if (matchingClass) {
+              classId = matchingClass.id
+            } else {
+              // If no exact match, log a warning but continue
+              console.warn(`No class found for grade "${grade}"`)
             }
           }
 
@@ -221,13 +242,13 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
                 last_name: lastName,
                 grade: grade || null,
                 student_number: row.student_number || row['ID Number'] || null,
-                parent_name: row.parent_name || null,
-                parent_email: row.parent_email || null,
-                parent_phone: row.parent_phone || null,
+                parent_name: parentName || null,
+                parent_email: parentEmail || null,
+                parent_phone: parentPhone || null,
                 emergency_contact: row.emergency_contact || null,
                 emergency_phone: row.emergency_phone || null,
                 medical_notes: row.Comment || row.medical_notes || null,
-                school_id: schoolId || null,
+                school_id: defaultSchool.id,
                 class_id: classId,
               },
             ])
@@ -330,11 +351,17 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
             <p className="text-sm text-gray-600 mt-2">
               Supports: CSV files or Excel files (.xlsx, .xls)
             </p>
-            <p className="text-sm text-gray-500 mt-1">
-              CSV format: first_name, last_name, grade, student_number, parent_name, parent_email, parent_phone, school_id, class_id
+            <p className="text-sm text-gray-500 mt-2 font-semibold">
+              Supported formats:
             </p>
             <p className="text-sm text-gray-500">
-              Excel format: "Student Name", "Grade", "Time", "Comment"
+              • New format: Email Address, Student Name, What grade is your child in 2025?, Parent/Guardian Name, Parent/Guardian Contact Nr
+            </p>
+            <p className="text-sm text-gray-500">
+              • CSV format: first_name, last_name, grade, student_number, parent_name, parent_email, parent_phone
+            </p>
+            <p className="text-sm text-gray-500">
+              Students are automatically assigned to classes based on their grade.
             </p>
           </div>
 
