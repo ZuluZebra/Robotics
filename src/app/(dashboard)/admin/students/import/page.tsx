@@ -130,14 +130,23 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
 
     // Detect column format
     const firstRow = data[0]
-    console.log('First row columns:', Object.keys(firstRow))
-    const hasStudentNameColumn = 'Student Name' in firstRow || 'student_name' in firstRow
-    const hasFirstNameColumn = 'first_name' in firstRow
-    const hasNewFormat = 'Email Address' in firstRow && 'Parent/Guardian Name' in firstRow
+    const columnNames = Object.keys(firstRow)
+    console.log('First row columns:', columnNames)
+
+    // Normalize column names for matching (trim and lowercase)
+    const normalizedColumns = new Set(
+      columnNames.map(col => col.trim().toLowerCase())
+    )
+
+    const hasStudentNameColumn = normalizedColumns.has('student name') || normalizedColumns.has('student_name')
+    const hasFirstNameColumn = normalizedColumns.has('first_name')
+    const hasNewFormat = normalizedColumns.has('email address') && normalizedColumns.has('parent/guardian name')
+
+    console.log('Column detection:', { hasStudentNameColumn, hasFirstNameColumn, hasNewFormat, normalizedColumns: Array.from(normalizedColumns) })
 
     if (!hasFirstNameColumn && !hasStudentNameColumn && !hasNewFormat) {
-      console.error('No student name column found')
-      toast.error('Could not find student name columns. Check your file format.')
+      console.error('No student name column found. Available columns:', columnNames)
+      toast.error(`Could not find required columns. Found: ${columnNames.join(', ')}`)
       return
     }
 
@@ -170,40 +179,52 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
           let parentName = ''
           let parentPhone = ''
 
+          // Find actual column names (case-insensitive)
+          const getRowValue = (row: any, ...possibleNames: string[]) => {
+            for (const name of possibleNames) {
+              // Try exact match first
+              if (name in row) return row[name] || ''
+              // Try case-insensitive match
+              const key = Object.keys(row).find(k => k.trim().toLowerCase() === name.toLowerCase())
+              if (key) return row[key] || ''
+            }
+            return ''
+          }
+
           // Handle new format (Email Address, Student Name, Grade, Parent/Guardian Name, Parent/Guardian Contact Nr)
           if (hasNewFormat) {
-            const studentName = row['Student Name'] || ''
+            const studentName = getRowValue(row, 'Student Name', 'student name')
             const nameParts = studentName.trim().split(/\s+/)
             if (nameParts.length < 2) {
               throw new Error(`Invalid student name format: "${studentName}" (expected "First Last")`)
             }
             firstName = nameParts[0]
             lastName = nameParts.slice(1).join(' ')
-            grade = (row['What grade is your child in 2025?'] || row['Grade'] || '').toString().trim()
-            parentEmail = row['Email Address'] || ''
-            parentName = row['Parent/Guardian Name'] || ''
-            parentPhone = row['Parent/Guardian Contact Nr'] || ''
+            grade = (getRowValue(row, 'What grade is your child in 2025?', 'Grade', 'grade') || '').toString().trim()
+            parentEmail = getRowValue(row, 'Email Address', 'email address')
+            parentName = getRowValue(row, 'Parent/Guardian Name', 'parent/guardian name', 'Parent Name')
+            parentPhone = getRowValue(row, 'Parent/Guardian Contact Nr', 'parent/guardian contact nr', 'Parent Phone')
           } else if (hasStudentNameColumn && !hasFirstNameColumn) {
             // Old Student Name format
-            const studentName = row['Student Name'] || ''
+            const studentName = getRowValue(row, 'Student Name', 'student name')
             const nameParts = studentName.trim().split(/\s+/)
             if (nameParts.length < 2) {
               throw new Error(`Invalid student name format: "${studentName}" (expected "First Last")`)
             }
             firstName = nameParts[0]
             lastName = nameParts.slice(1).join(' ')
-            grade = (row['Grade'] || '').toString()
-            parentName = row['Parent Name'] || row['parent_name'] || ''
-            parentEmail = row['Parent Email'] || row['parent_email'] || ''
-            parentPhone = row['Parent Phone'] || row['parent_phone'] || ''
+            grade = (getRowValue(row, 'Grade', 'grade') || '').toString()
+            parentName = getRowValue(row, 'Parent Name', 'parent_name')
+            parentEmail = getRowValue(row, 'Parent Email', 'parent_email')
+            parentPhone = getRowValue(row, 'Parent Phone', 'parent_phone')
           } else {
             // Standard CSV format
-            firstName = row.first_name || ''
-            lastName = row.last_name || ''
-            grade = row.grade || ''
-            parentName = row.parent_name || ''
-            parentEmail = row.parent_email || ''
-            parentPhone = row.parent_phone || ''
+            firstName = getRowValue(row, 'first_name')
+            lastName = getRowValue(row, 'last_name')
+            grade = getRowValue(row, 'grade')
+            parentName = getRowValue(row, 'parent_name')
+            parentEmail = getRowValue(row, 'parent_email')
+            parentPhone = getRowValue(row, 'parent_phone')
           }
 
           if (!firstName || !lastName) {
