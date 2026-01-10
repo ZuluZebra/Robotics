@@ -8,12 +8,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Student } from '@/types/models'
+import { Student, Class } from '@/types/models'
 import { Plus, Edit2, Trash2, FileUp, Eye, Share2, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { generateParentAccessToken } from '@/app/actions/parent-portal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatSchedule, formatTime } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export default function StudentsPage() {
   const [showDetails, setShowDetails] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [shareLink, setShareLink] = useState('')
   const [generatingLink, setGeneratingLink] = useState(false)
@@ -197,6 +199,38 @@ export default function StudentsPage() {
                       </div>
                     </div>
                   </div>
+                  {selectedClass && (
+                    <div className="mt-6 pt-6 border-t">
+                      <h3 className="font-semibold text-gray-900 mb-4">Class Information</h3>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-sm text-gray-600">Class Name</p>
+                          <p className="text-base font-medium">{selectedClass.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Schedule</p>
+                          <p className="text-base font-medium">{formatSchedule(selectedClass.schedule_days)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Time</p>
+                          <p className="text-base font-medium">
+                            {selectedClass.start_time && selectedClass.end_time
+                              ? `${formatTime(selectedClass.start_time)} - ${formatTime(selectedClass.end_time)}`
+                              : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Room</p>
+                          <p className="text-base font-medium">{selectedClass.room_number || '—'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!selectedClass && selectedStudent.class_id && (
+                    <div className="mt-6 pt-6 border-t">
+                      <p className="text-sm text-gray-600">Class assigned but information could not be loaded</p>
+                    </div>
+                  )}
                   {selectedStudent.medical_notes && (
                     <div className="mt-6 pt-6 border-t">
                       <h3 className="font-semibold text-gray-900 mb-2">Medical Notes</h3>
@@ -293,8 +327,25 @@ export default function StudentsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
                     setSelectedStudent(student)
+                    setSelectedClass(null)
+                    // Fetch class info if student has a class assigned
+                    if (student.class_id) {
+                      try {
+                        const { data, error } = await supabase
+                          .from('classes')
+                          .select('*')
+                          .eq('id', student.class_id)
+                          .single()
+
+                        if (!error && data) {
+                          setSelectedClass(data)
+                        }
+                      } catch (err) {
+                        console.error('Error fetching class:', err)
+                      }
+                    }
                     setShowDetails(true)
                   }}
                   aria-label="View student details"
