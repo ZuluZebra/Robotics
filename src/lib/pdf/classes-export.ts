@@ -27,7 +27,6 @@ export function generateClassesPDF(
   })
 
   const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
   const marginLeft = 15
   const marginTop = 15
   const marginRight = 15
@@ -57,11 +56,11 @@ export function generateClassesPDF(
     yPos += 5
 
     // Render classes table
-    renderClassesTable(doc, school.classes, marginLeft, yPos, pageWidth, pageHeight, marginRight)
+    renderClassesTable(doc, school.classes, marginLeft, yPos, marginRight)
   })
 
   // Add page numbers and generation date
-  addFooters(doc)
+  addFooters(doc, pageWidth, marginLeft, marginRight)
 
   // Download PDF
   doc.save(filename)
@@ -74,22 +73,21 @@ function renderSchoolHeader(
   y: number,
   width: number
 ): number {
-  const primaryColor = [25, 103, 210] // Blue
-  const textColor = [33, 33, 33] // Dark gray
+  const primaryColor: [number, number, number] = [25, 103, 210] // Blue
 
   // School name (large, bold)
   doc.setFontSize(16)
   doc.setTextColor(...primaryColor)
-  doc.setFont(undefined, 'bold')
+  doc.setFont('', 'bold')
   doc.text(school.name, x, y)
   y += 8
 
   // Contact info (smaller, gray)
   doc.setFontSize(10)
   doc.setTextColor(100, 100, 100)
-  doc.setFont(undefined, 'normal')
+  doc.setFont('', 'normal')
 
-  const contactInfo = []
+  const contactInfo: string[] = []
   if (school.principal_name) {
     contactInfo.push(`Principal: ${school.principal_name}`)
   }
@@ -121,8 +119,6 @@ function renderClassesTable(
   classes: ClassWithDetails[],
   marginLeft: number,
   startY: number,
-  pageWidth: number,
-  pageHeight: number,
   marginRight: number
 ) {
   if (!classes || classes.length === 0) {
@@ -155,11 +151,11 @@ function renderClassesTable(
       fontStyle: 'bold',
       fontSize: 10,
       halign: 'left',
-      padding: 3,
+      cellPadding: 3,
     },
     bodyStyles: {
       fontSize: 9,
-      padding: 3,
+      cellPadding: 3,
     },
     alternateRowStyles: {
       fillColor: [245, 245, 245], // Light gray
@@ -173,41 +169,14 @@ function renderClassesTable(
       5: { cellWidth: 60 }, // Teachers
       6: { cellWidth: 15, halign: 'center' }, // Students
     },
-    didDrawPage: (data) => {
-      // Handle page breaks for multiple schools
-      const pageSize = doc.internal.pageSize
-      const pageHeight = pageSize.getHeight()
-      const pageCount = (doc as any).internal.pages.length
-
-      // Add page number and date to footer of each page
-      const pageNum = data.pageNumber
-      const totalPages = (doc as any).internal.pages.length
-      const footerY = pageHeight - 10
-
-      doc.setFontSize(8)
-      doc.setTextColor(150, 150, 150)
-      doc.text(
-        `Generated on ${new Date().toLocaleDateString()}`,
-        marginLeft,
-        footerY
-      )
-      doc.text(
-        `Page ${pageNum}`,
-        pageSize.getWidth() - marginRight - 20,
-        footerY
-      )
-    },
   })
 }
 
-function addFooters(doc: jsPDF) {
+function addFooters(doc: jsPDF, pageWidth: number, marginLeft: number, marginRight: number) {
   const pageCount = (doc as any).internal.pages.length
   const pageSize = doc.internal.pageSize
-  const pageWidth = pageSize.getWidth()
   const pageHeight = pageSize.getHeight()
   const footerY = pageHeight - 10
-  const marginRight = 15
-  const marginLeft = 15
 
   doc.setFontSize(8)
   doc.setTextColor(150, 150, 150)
