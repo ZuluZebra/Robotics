@@ -47,9 +47,9 @@ export default function ImportStudentsPage() {
   }
 
   const downloadTemplate = () => {
-    const template = `first_name,last_name,grade,student_number,parent_name,parent_email,parent_phone,school_id,class_id
-John,Doe,5,S001,Jane Doe,jane@example.com,555-0001,SCHOOL_ID,CLASS_ID
-Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
+    const template = `first_name,last_name,grade,student_number,parent_name,parent_email,parent_phone,school_id,class_id,start_time,end_time
+John,Doe,5,S001,Jane Doe,jane@example.com,555-0001,SCHOOL_ID,CLASS_ID,14:00,15:30
+Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID,14:00,15:30`
 
     const element = document.createElement('a')
     element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(template))
@@ -181,6 +181,10 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
           let parentEmail = ''
           let parentName = ''
           let parentPhone = ''
+          let schoolId = ''
+          let csvClassId = ''
+          let startTime = ''
+          let endTime = ''
 
           // Find actual column names (case-insensitive)
           const getRowValue = (row: any, ...possibleNames: string[]) => {
@@ -228,32 +232,64 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
             parentName = getRowValue(row, 'parent_name')
             parentEmail = getRowValue(row, 'parent_email')
             parentPhone = getRowValue(row, 'parent_phone')
+            schoolId = getRowValue(row, 'school_id')
+            csvClassId = getRowValue(row, 'class_id')
+            startTime = getRowValue(row, 'start_time')
+            endTime = getRowValue(row, 'end_time')
           }
 
           if (!firstName || !lastName) {
             throw new Error('Missing student name')
           }
 
-          // Find class based on grade
-          let classId = selectedClass || null
+          // Determine which school to use
+          const finalSchoolId = schoolId || defaultSchool.id
+
+          // Find class based on provided class_id or grade
+          let classId = selectedClass || csvClassId || null
 
           if (!classId && grade) {
             const { data: classData } = await supabase
               .from('classes')
-              .select('id, grade, name')
+              .select('id, grade, name, start_time, end_time')
               .eq('is_active', true)
-              .eq('school_id', defaultSchool.id)
+              .eq('school_id', finalSchoolId)
 
-            // Find matching class by grade
-            const matchingClass = classData?.find(
-              (c) => c.grade.toLowerCase().trim() === grade.toLowerCase().trim()
-            )
+            // Find matching class by grade and time if available
+            let matchingClass = classData?.find((c) => {
+              const gradeMatches = c.grade.toLowerCase().trim() === grade.toLowerCase().trim()
+
+              // If times are provided in CSV, match by time as well
+              if (startTime && endTime) {
+                return gradeMatches && c.start_time === startTime && c.end_time === endTime
+              }
+
+              return gradeMatches
+            })
 
             if (matchingClass) {
               classId = matchingClass.id
             } else {
               // If no exact match, log a warning but continue
-              console.warn(`No class found for grade "${grade}"`)
+              const timeInfo = startTime && endTime ? ` at ${startTime}-${endTime}` : ''
+              console.warn(`No class found for grade "${grade}"${timeInfo} in school "${finalSchoolId}"`)
+            }
+          } else if (csvClassId && (startTime || endTime)) {
+            // If class_id is provided, validate it has matching times
+            const { data: classData } = await supabase
+              .from('classes')
+              .select('id, grade, name, start_time, end_time')
+              .eq('id', csvClassId)
+              .eq('school_id', finalSchoolId)
+              .single()
+
+            if (classData) {
+              const timeMatches = (!startTime || classData.start_time === startTime) &&
+                                 (!endTime || classData.end_time === endTime)
+
+              if (!timeMatches) {
+                console.warn(`Class ID ${csvClassId} has times ${classData.start_time}-${classData.end_time}, but CSV specifies ${startTime}-${endTime}`)
+              }
             }
           }
 
@@ -272,7 +308,7 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
                 emergency_contact: row.emergency_contact || null,
                 emergency_phone: row.emergency_phone || null,
                 medical_notes: row.Comment || row.medical_notes || null,
-                school_id: defaultSchool.id,
+                school_id: finalSchoolId,
                 class_id: classId,
               },
             ])
@@ -386,10 +422,10 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID`
               • New format: Email Address, Student Name & Surname, Student Grade and Class, Parent/Guardian Name & Surname, Parent/Guardian Contact Number
             </p>
             <p className="text-sm text-gray-500">
-              • CSV format: first_name, last_name, grade, student_number, parent_name, parent_email, parent_phone
+              • CSV format: first_name, last_name, grade, student_number, parent_name, parent_email, parent_phone, school_id, class_id, start_time, end_time
             </p>
             <p className="text-sm text-gray-500">
-              Students are automatically assigned to classes based on their grade.
+              Students are automatically assigned to classes based on their school, grade, and time. Include start_time and end_time (HH:MM format) to ensure students are assigned to the correct class time.
             </p>
           </div>
 
