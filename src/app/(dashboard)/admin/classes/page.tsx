@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Class, School } from '@/types/models'
-import { Plus, Edit2, Trash2, FileDown } from 'lucide-react'
+import { Class, School, Student } from '@/types/models'
+import { Plus, Edit2, Trash2, FileDown, Eye, Loader2, Users } from 'lucide-react'
 import { formatSchedule, formatTime } from '@/lib/utils'
 import { generateClassesPDF, SchoolWithClasses } from '@/lib/pdf/classes-export'
 
@@ -23,6 +23,10 @@ export default function ClassesPage() {
   const [showForm, setShowForm] = useState(false)
   const [selectedClass, setSelectedClass] = useState<Class | null>(null)
   const [selectedSchool, setSelectedSchool] = useState<string>('')
+  const [showStudentsDialog, setShowStudentsDialog] = useState(false)
+  const [selectedClassForView, setSelectedClassForView] = useState<Class | null>(null)
+  const [classStudents, setClassStudents] = useState<Student[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(false)
   const supabase = createClient()
 
   // Fetch schools
@@ -127,6 +131,29 @@ export default function ClassesPage() {
     setSelectedClass(null)
     if (selectedSchool) {
       fetchClasses(selectedSchool)
+    }
+  }
+
+  const handleViewStudents = async (classItem: Class) => {
+    setSelectedClassForView(classItem)
+    setShowStudentsDialog(true)
+    setLoadingStudents(true)
+
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('class_id', classItem.id)
+        .order('last_name, first_name')
+
+      if (error) throw error
+      setClassStudents(data || [])
+    } catch (error) {
+      console.error('Error fetching students:', error)
+      toast.error('Failed to load students')
+      setClassStudents([])
+    } finally {
+      setLoadingStudents(false)
     }
   }
 
@@ -288,6 +315,65 @@ export default function ClassesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Students List Dialog */}
+      <Dialog open={showStudentsDialog} onOpenChange={setShowStudentsDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Students in {selectedClassForView?.name}</DialogTitle>
+            <DialogDescription>
+              Grade {selectedClassForView?.grade} • {selectedClassForView?.schedule_days ? formatSchedule(selectedClassForView?.schedule_days) : 'No schedule set'} • {selectedClassForView?.start_time && selectedClassForView?.end_time ? `${selectedClassForView?.start_time} - ${selectedClassForView?.end_time}` : '—'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingStudents ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : classStudents.length > 0 ? (
+            <div className="rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Name</th>
+                    <th className="px-4 py-3 text-left font-medium">Student #</th>
+                    <th className="px-4 py-3 text-left font-medium">Grade</th>
+                    <th className="px-4 py-3 text-left font-medium">Parent</th>
+                    <th className="px-4 py-3 text-left font-medium">Parent Email</th>
+                    <th className="px-4 py-3 text-left font-medium">Parent Phone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {classStudents.map((student, idx) => (
+                    <tr key={student.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-4 py-3">{student.first_name} {student.last_name}</td>
+                      <td className="px-4 py-3">{student.student_number || '—'}</td>
+                      <td className="px-4 py-3">{student.grade}</td>
+                      <td className="px-4 py-3">{student.parent_name || '—'}</td>
+                      <td className="px-4 py-3 break-all">{student.parent_email || '—'}</td>
+                      <td className="px-4 py-3">{student.parent_phone || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No students enrolled in this class yet</p>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center pt-4 border-t mt-4">
+            <p className="text-sm text-gray-600">
+              Total: {classStudents.length} student{classStudents.length !== 1 ? 's' : ''}
+            </p>
+            <Button variant="outline" onClick={() => setShowStudentsDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Classes Table */}
       {selectedSchoolData && (
         <Card>
@@ -330,6 +416,15 @@ export default function ClassesPage() {
             loading={loading}
             actions={(schoolClass) => (
               <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleViewStudents(schoolClass)}
+                  aria-label="View students"
+                  title="View students in this class"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
