@@ -68,18 +68,19 @@ Jane,Smith,5,,John Smith,john@example.com,555-0002,Springfield Elementary,Grade 
 
     const fileName = file.name.toLowerCase()
     console.log('File selected:', fileName)
-    toast.loading('Reading file...')
+    const toastId = toast.loading('Reading file...')
 
     if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      handleXlsxUpload(file)
+      handleXlsxUpload(file, toastId)
     } else if (fileName.endsWith('.csv')) {
-      handleCsvUpload(file)
+      handleCsvUpload(file, toastId)
     } else {
+      toast.dismiss(toastId)
       toast.error('Please upload a CSV or Excel file')
     }
   }
 
-  const handleCsvUpload = (file: File) => {
+  const handleCsvUpload = (file: File, toastId: string | number) => {
     console.log('Parsing CSV file...')
     Papa.parse(file, {
       header: true,
@@ -88,16 +89,18 @@ Jane,Smith,5,,John Smith,john@example.com,555-0002,Springfield Elementary,Grade 
         console.log('CSV parsed, rows:', results.data.length)
         console.log('First row keys:', Object.keys(results.data[0] || {}))
         console.log('First row:', results.data[0])
+        toast.dismiss(toastId)
         await importStudents(results.data as any[])
       },
       error: (error) => {
         console.error('CSV parse error:', error)
+        toast.dismiss(toastId)
         toast.error('Failed to parse CSV file')
       },
     })
   }
 
-  const handleXlsxUpload = (file: File) => {
+  const handleXlsxUpload = (file: File, toastId: string | number) => {
     console.log('Reading Excel file...')
     const reader = new FileReader()
     reader.onload = async (e) => {
@@ -109,14 +112,17 @@ Jane,Smith,5,,John Smith,john@example.com,555-0002,Springfield Elementary,Grade 
         const worksheet = workbook.Sheets[workbook.SheetNames[0]]
         const rows = XLSX.utils.sheet_to_json(worksheet)
         console.log('Excel parsed, rows:', rows.length)
+        toast.dismiss(toastId)
         await importStudents(rows as any[])
       } catch (error) {
         console.error('Excel parse error:', error)
+        toast.dismiss(toastId)
         toast.error('Failed to parse Excel file')
       }
     }
     reader.onerror = () => {
       console.error('File read error')
+      toast.dismiss(toastId)
       toast.error('Failed to read file')
     }
     reader.readAsBinaryString(file)
