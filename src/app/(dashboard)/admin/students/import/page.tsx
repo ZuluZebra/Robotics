@@ -48,8 +48,8 @@ export default function ImportStudentsPage() {
 
   const downloadTemplate = () => {
     const template = `first_name,last_name,grade,student_number,parent_name,parent_email,parent_phone,school_id,class_id,start_time,end_time
-John,Doe,5,S001,Jane Doe,jane@example.com,555-0001,SCHOOL_ID,CLASS_ID,14:00,15:30
-Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID,14:00,15:30`
+John,Doe,5,,Jane Doe,jane@example.com,555-0001,Springfield Elementary,Grade 5 Robotics,14:00,15:30
+Jane,Smith,5,,John Smith,john@example.com,555-0002,Springfield Elementary,Grade 5 Robotics,14:00,15:30`
 
     const element = document.createElement('a')
     element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(template))
@@ -86,6 +86,8 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID,14:00,
       skipEmptyLines: true,
       complete: async (results) => {
         console.log('CSV parsed, rows:', results.data.length)
+        console.log('First row keys:', Object.keys(results.data[0] || {}))
+        console.log('First row:', results.data[0])
         await importStudents(results.data as any[])
       },
       error: (error) => {
@@ -118,6 +120,11 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID,14:00,
       toast.error('Failed to read file')
     }
     reader.readAsBinaryString(file)
+  }
+
+  const isUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    return uuidRegex.test(str)
   }
 
   const importStudents = async (data: any[]) => {
@@ -170,6 +177,25 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID,14:00,
       if (!defaultSchool) {
         throw new Error('No active schools found')
       }
+
+      // Create school name → id map
+      const schoolMap = new Map<string, string>()
+      schoolsData?.forEach(school => {
+        schoolMap.set(school.name.toLowerCase().trim(), school.id)
+      })
+
+      // Fetch all classes for lookup
+      const { data: classesData } = await supabase
+        .from('classes')
+        .select('id, name, school_id, grade, start_time, end_time')
+        .eq('is_active', true)
+
+      // Create class name → class map (keyed by name_schoolId for disambiguation)
+      const classMap = new Map<string, any>()
+      classesData?.forEach(cls => {
+        const key = `${cls.name.toLowerCase().trim()}_${cls.school_id}`
+        classMap.set(key, cls)
+      })
 
       for (let i = 0; i < data.length; i++) {
         const row = data[i]
@@ -243,52 +269,64 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID,14:00,
           }
 
           // Determine which school to use
-          const finalSchoolId = schoolId || defaultSchool.id
+          let finalSchoolId = defaultSchool.id
+          if (schoolId) {
+            if (isUUID(schoolId)) {
+              // It's already a UUID
+              finalSchoolId = schoolId
+            } else {
+              // It's a school name - look it up
+              const lookupId = schoolMap.get(schoolId.toLowerCase().trim())
+              if (lookupId) {
+                finalSchoolId = lookupId
+              } else {
+                console.warn(`School "${schoolId}" not found, using default school "${defaultSchool.name}"`)
+              }
+            }
+          }
 
           // Find class based on provided class_id or grade
-          let classId = selectedClass || csvClassId || null
+          let classId = selectedClass || null
 
+          if (!classId && csvClassId) {
+            if (isUUID(csvClassId)) {
+              // It's already a UUID
+              classId = csvClassId
+            } else {
+              // It's a class name - look it up with school context
+              const key = `${csvClassId.toLowerCase().trim()}_${finalSchoolId}`
+              const matchedClass = classMap.get(key)
+              if (matchedClass) {
+                classId = matchedClass.id
+              } else {
+                console.warn(`Class "${csvClassId}" not found in school "${finalSchoolId}"`)
+              }
+            }
+          }
+
+          // If still no class, try matching by grade + time
           if (!classId && grade) {
-            const { data: classData } = await supabase
-              .from('classes')
-              .select('id, grade, name, start_time, end_time')
-              .eq('is_active', true)
-              .eq('school_id', finalSchoolId)
+            const gradeClasses = classesData?.filter(c =>
+              c.school_id === finalSchoolId &&
+              c.grade.toLowerCase().trim() === grade.toLowerCase().trim()
+            )
 
-            // Find matching class by grade and time if available
-            let matchingClass = classData?.find((c) => {
-              const gradeMatches = c.grade.toLowerCase().trim() === grade.toLowerCase().trim()
-
-              // If times are provided in CSV, match by time as well
+            if (gradeClasses && gradeClasses.length > 0) {
+              let matchingClass
               if (startTime && endTime) {
-                return gradeMatches && c.start_time === startTime && c.end_time === endTime
+                // Match by grade + time
+                matchingClass = gradeClasses.find(c =>
+                  c.start_time === startTime && c.end_time === endTime
+                )
+              } else if (gradeClasses.length === 1) {
+                // Only one class for this grade, use it
+                matchingClass = gradeClasses[0]
               }
 
-              return gradeMatches
-            })
-
-            if (matchingClass) {
-              classId = matchingClass.id
-            } else {
-              // If no exact match, log a warning but continue
-              const timeInfo = startTime && endTime ? ` at ${startTime}-${endTime}` : ''
-              console.warn(`No class found for grade "${grade}"${timeInfo} in school "${finalSchoolId}"`)
-            }
-          } else if (csvClassId && (startTime || endTime)) {
-            // If class_id is provided, validate it has matching times
-            const { data: classData } = await supabase
-              .from('classes')
-              .select('id, grade, name, start_time, end_time')
-              .eq('id', csvClassId)
-              .eq('school_id', finalSchoolId)
-              .single()
-
-            if (classData) {
-              const timeMatches = (!startTime || classData.start_time === startTime) &&
-                                 (!endTime || classData.end_time === endTime)
-
-              if (!timeMatches) {
-                console.warn(`Class ID ${csvClassId} has times ${classData.start_time}-${classData.end_time}, but CSV specifies ${startTime}-${endTime}`)
+              if (matchingClass) {
+                classId = matchingClass.id
+              } else if (startTime && endTime) {
+                console.warn(`No class found for grade "${grade}" at ${startTime}-${endTime} in school "${finalSchoolId}"`)
               }
             }
           }
@@ -413,7 +451,7 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID,14:00,
               className="w-full"
             />
             <p className="text-sm text-gray-600 mt-2">
-              Supports: CSV files or Excel files (.xlsx, .xls)
+              Supports: CSV files (comma or tab-separated) or Excel files (.xlsx, .xls)
             </p>
             <p className="text-sm text-gray-500 mt-2 font-semibold">
               Supported formats:
@@ -425,7 +463,13 @@ Jane,Smith,5,S002,John Smith,john@example.com,555-0002,SCHOOL_ID,CLASS_ID,14:00,
               • CSV format: first_name, last_name, grade, student_number, parent_name, parent_email, parent_phone, school_id, class_id, start_time, end_time
             </p>
             <p className="text-sm text-gray-500">
-              Students are automatically assigned to classes based on their school, grade, and time. Include start_time and end_time (HH:MM format) to ensure students are assigned to the correct class time.
+              • school_id and class_id can be either the name (e.g., "Springfield Elementary", "Grade 5 Robotics") or the UUID. Names will be automatically looked up.
+            </p>
+            <p className="text-sm text-gray-500">
+              • Include start_time and end_time (HH:MM format) to help match students to the correct class time.
+            </p>
+            <p className="text-sm text-gray-500">
+              • student_number is optional and can be left empty.
             </p>
           </div>
 
