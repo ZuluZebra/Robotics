@@ -127,6 +127,31 @@ Jane,Smith,5,,John Smith,john@example.com,555-0002,Springfield Elementary,Grade 
     return uuidRegex.test(str)
   }
 
+  const parseDayFromClassName = (className: string): string[] => {
+    const DAY_MAPPINGS: Record<string, string[]> = {
+      'Monday': ['monday', 'maandag', 'lunes', 'mon'],
+      'Tuesday': ['tuesday', 'dinsdag', 'martes', 'tue'],
+      'Wednesday': ['wednesday', 'woensdag', 'miércoles', 'wed'],
+      'Thursday': ['thursday', 'donderdag', 'jueves', 'thu'],
+      'Friday': ['friday', 'vrydag', 'vrijdag', 'viernes', 'fri'],
+      'Saturday': ['saturday', 'saterdag', 'zaterdag', 'sábado', 'sat'],
+      'Sunday': ['sunday', 'sondag', 'domingo', 'sun']
+    }
+
+    const lowerName = className.toLowerCase().trim()
+
+    for (const [englishDay, variations] of Object.entries(DAY_MAPPINGS)) {
+      for (const variant of variations) {
+        if (lowerName.includes(variant)) {
+          return [englishDay]
+        }
+      }
+    }
+
+    // Default to empty array if no day found
+    return []
+  }
+
   const importStudents = async (data: any[]) => {
     console.log('Starting import with', data.length, 'rows')
 
@@ -196,6 +221,81 @@ Jane,Smith,5,,John Smith,john@example.com,555-0002,Springfield Elementary,Grade 
         const key = `${cls.name.toLowerCase().trim()}_${cls.school_id}`
         classMap.set(key, cls)
       })
+
+      // Track classes created during this import to avoid duplicates
+      const autoCreatedClasses = new Map<string, string>()
+
+      // Function to get or create a class
+      const getOrCreateClass = async (
+        className: string,
+        schoolId: string,
+        grade: string,
+        startTime: string,
+        endTime: string
+      ): Promise<string | null> => {
+        // Check if already created in this import session
+        const cacheKey = `${className.toLowerCase().trim()}_${schoolId}_${grade}_${startTime}_${endTime}`
+        if (autoCreatedClasses.has(cacheKey)) {
+          return autoCreatedClasses.get(cacheKey)!
+        }
+
+        // Check if class exists in database with exact match
+        const existingKey = `${className.toLowerCase().trim()}_${schoolId}`
+        let existingClass = classMap.get(existingKey)
+
+        // If exists, verify grade and time match
+        if (existingClass &&
+            existingClass.grade.toLowerCase().trim() === grade.toLowerCase().trim() &&
+            existingClass.start_time === startTime &&
+            existingClass.end_time === endTime) {
+          return existingClass.id
+        }
+
+        // Create new class
+        try {
+          const scheduleDays = parseDayFromClassName(className)
+
+          const { data: newClass, error } = await supabase
+            .from('classes')
+            .insert([{
+              school_id: schoolId,
+              name: className,
+              grade: grade,
+              start_time: startTime || null,
+              end_time: endTime || null,
+              schedule_days: scheduleDays.length > 0 ? scheduleDays : null,
+              is_active: true
+            }])
+            .select('id')
+
+          if (error) {
+            console.error('Failed to create class:', error)
+            return null
+          }
+
+          const newClassId = newClass[0].id
+
+          // Cache for this import session
+          autoCreatedClasses.set(cacheKey, newClassId)
+
+          // Also add to classMap for subsequent lookups
+          classMap.set(existingKey, {
+            id: newClassId,
+            name: className,
+            school_id: schoolId,
+            grade: grade,
+            start_time: startTime,
+            end_time: endTime
+          })
+
+          console.log(`Auto-created class "${className}" for grade ${grade} at ${startTime}-${endTime}`)
+
+          return newClassId
+        } catch (err) {
+          console.error('Error creating class:', err)
+          return null
+        }
+      }
 
       for (let i = 0; i < data.length; i++) {
         const row = data[i]
@@ -299,7 +399,13 @@ Jane,Smith,5,,John Smith,john@example.com,555-0002,Springfield Elementary,Grade 
               if (matchedClass) {
                 classId = matchedClass.id
               } else {
-                console.warn(`Class "${csvClassId}" not found in school "${finalSchoolId}"`)
+                // Class doesn't exist - auto-create it if we have enough info
+                if (grade && startTime && endTime) {
+                  console.log(`Class "${csvClassId}" not found - auto-creating...`)
+                  classId = await getOrCreateClass(csvClassId, finalSchoolId, grade, startTime, endTime)
+                } else {
+                  console.warn(`Class "${csvClassId}" not found and insufficient info to create (need grade, start_time, end_time)`)
+                }
               }
             }
           }
@@ -380,10 +486,16 @@ Jane,Smith,5,,John Smith,john@example.com,555-0002,Springfield Elementary,Grade 
         errors,
       })
 
-      console.log('Import complete:', { successCount, failed: errors.length })
+      console.log('Import complete:', { successCount, failed: errors.length, autoCreated: autoCreatedClasses.size })
 
       // Dismiss loading toast
       toast.dismiss(toastId)
+
+      // Show summary with auto-created classes count
+      const autoCreatedCount = autoCreatedClasses.size
+      if (autoCreatedCount > 0) {
+        toast.info(`Auto-created ${autoCreatedCount} new class${autoCreatedCount !== 1 ? 'es' : ''}`)
+      }
 
       if (errors.length === 0) {
         toast.success(`Successfully imported ${successCount} students!`)
