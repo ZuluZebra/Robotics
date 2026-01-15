@@ -13,8 +13,13 @@ import { Plus, Edit2, Trash2 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
+type SchoolWithCounts = School & {
+  classCount?: number
+  studentCount?: number
+}
+
 export default function SchoolsPage() {
-  const [schools, setSchools] = useState<School[]>([])
+  const [schools, setSchools] = useState<SchoolWithCounts[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null)
@@ -28,7 +33,31 @@ export default function SchoolsPage() {
         .order('name')
 
       if (error) throw error
-      setSchools(data || [])
+
+      // Fetch counts for each school
+      const schoolsWithCounts = await Promise.all(
+        (data || []).map(async (school: School) => {
+          // Fetch class count
+          const { count: classCount } = await supabase
+            .from('classes')
+            .select('*', { count: 'exact', head: true })
+            .eq('school_id', school.id)
+
+          // Fetch student count
+          const { count: studentCount } = await supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true })
+            .eq('school_id', school.id)
+
+          return {
+            ...school,
+            classCount: classCount || 0,
+            studentCount: studentCount || 0,
+          }
+        })
+      )
+
+      setSchools(schoolsWithCounts)
     } catch (error) {
       console.error('Error fetching schools:', error)
       toast.error('Failed to load schools')
@@ -119,7 +148,15 @@ export default function SchoolsPage() {
               { header: 'Email', accessor: 'email' },
               {
                 header: 'Principal',
-                accessor: (school: School) => school.principal_name || '—',
+                accessor: (school: SchoolWithCounts) => school.principal_name || '—',
+              },
+              {
+                header: 'Classes',
+                accessor: (school: SchoolWithCounts) => school.classCount?.toString() || '0',
+              },
+              {
+                header: 'Students',
+                accessor: (school: SchoolWithCounts) => school.studentCount?.toString() || '0',
               },
             ]}
             data={schools}
