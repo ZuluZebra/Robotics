@@ -466,7 +466,6 @@ export default function StudentsPage() {
                 header: 'Name',
                 accessor: (student: StudentWithDetails) => `${student.first_name} ${student.last_name}`,
               },
-              { header: 'Student #', accessor: 'student_number' },
               { header: 'Grade', accessor: 'grade' },
               {
                 header: 'School',
