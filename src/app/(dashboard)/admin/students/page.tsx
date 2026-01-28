@@ -33,6 +33,7 @@ interface StudentWithDetails extends Student {
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<StudentWithDetails[]>([])
+  const [totalStudents, setTotalStudents] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -53,7 +54,7 @@ export default function StudentsPage() {
     try {
       let query = supabase
         .from('students')
-        .select('*, schools(name)')
+        .select('*, schools(name)', { count: 'exact' })
 
       // Apply filters conditionally
       if (selectedSchool && selectedSchool !== '__all__') {
@@ -63,7 +64,7 @@ export default function StudentsPage() {
         query = query.eq('grade', selectedGrade)
       }
 
-      const { data, error } = await query
+      const { data, error, count } = await query
         .order('last_name, first_name')
         .range(0, ITEMS_PER_PAGE - 1)
 
@@ -75,6 +76,7 @@ export default function StudentsPage() {
       }))
 
       setStudents(studentsWithDetails)
+      setTotalStudents(count || 0)
       setHasMore((data?.length || 0) >= ITEMS_PER_PAGE)
     } catch (error) {
       console.error('Error fetching students:', error)
@@ -389,7 +391,7 @@ export default function StudentsPage() {
         <CardHeader>
           <CardTitle>All Students</CardTitle>
           <CardDescription>
-            {students.length} student{students.length !== 1 ? 's' : ''} in the system
+            {totalStudents} student{totalStudents !== 1 ? 's' : ''} {selectedSchool !== '__all__' || selectedGrade !== '__all__' ? 'matching filters' : 'in the system'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -556,7 +558,7 @@ export default function StudentsPage() {
           )}
           {!hasMore && students.length > 0 && (
             <div className="flex justify-center pt-4 text-sm text-gray-500">
-              All {students.length} students loaded
+              All {totalStudents} students loaded
             </div>
           )}
         </CardContent>
