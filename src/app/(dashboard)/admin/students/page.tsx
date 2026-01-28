@@ -8,20 +8,31 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Student, Class } from '@/types/models'
-import { Plus, Edit2, Trash2, FileUp, Eye, Share2, Copy } from 'lucide-react'
+import { Student, Class, School } from '@/types/models'
+import { Plus, Edit2, Trash2, FileUp, Eye, Share2, Copy, X } from 'lucide-react'
 import Link from 'next/link'
 import { generateParentAccessToken } from '@/app/actions/parent-portal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatSchedule, formatTime } from '@/lib/utils'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export const dynamic = 'force-dynamic'
 
 const ITEMS_PER_PAGE = 50
 
+interface StudentWithDetails extends Student {
+  school_name?: string
+}
+
 export default function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>([])
+  const [students, setStudents] = useState<StudentWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -33,18 +44,37 @@ export default function StudentsPage() {
   const [shareLink, setShareLink] = useState('')
   const [generatingLink, setGeneratingLink] = useState(false)
   const [hasMore, setHasMore] = useState(true)
+  const [schools, setSchools] = useState<School[]>([])
+  const [selectedSchool, setSelectedSchool] = useState<string>('__all__')
+  const [selectedGrade, setSelectedGrade] = useState<string>('__all__')
   const supabase = createClient()
 
   const fetchStudents = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('students')
-        .select('*')
+        .select('*, schools(name)')
+
+      // Apply filters conditionally
+      if (selectedSchool && selectedSchool !== '__all__') {
+        query = query.eq('school_id', selectedSchool)
+      }
+      if (selectedGrade && selectedGrade !== '__all__') {
+        query = query.eq('grade', selectedGrade)
+      }
+
+      const { data, error } = await query
         .order('last_name, first_name')
         .range(0, ITEMS_PER_PAGE - 1)
 
       if (error) throw error
-      setStudents(data || [])
+
+      const studentsWithDetails = (data || []).map((student: any) => ({
+        ...student,
+        school_name: student.schools?.name || 'Unknown',
+      }))
+
+      setStudents(studentsWithDetails)
       setHasMore((data?.length || 0) >= ITEMS_PER_PAGE)
     } catch (error) {
       console.error('Error fetching students:', error)
@@ -59,15 +89,29 @@ export default function StudentsPage() {
 
     setLoadingMore(true)
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('students')
-        .select('*')
+        .select('*, schools(name)')
+
+      // Apply filters conditionally
+      if (selectedSchool && selectedSchool !== '__all__') {
+        query = query.eq('school_id', selectedSchool)
+      }
+      if (selectedGrade && selectedGrade !== '__all__') {
+        query = query.eq('grade', selectedGrade)
+      }
+
+      const { data, error } = await query
         .order('last_name, first_name')
         .range(students.length, students.length + ITEMS_PER_PAGE - 1)
 
       if (error) throw error
       if (data) {
-        setStudents((prev) => [...prev, ...data])
+        const studentsWithDetails = data.map((student: any) => ({
+          ...student,
+          school_name: student.schools?.name || 'Unknown',
+        }))
+        setStudents((prev) => [...prev, ...studentsWithDetails])
         setHasMore(data.length >= ITEMS_PER_PAGE)
       }
     } catch (error) {
@@ -80,6 +124,30 @@ export default function StudentsPage() {
   useEffect(() => {
     fetchStudents()
   }, [supabase])
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('is_active', true)
+          .order('name')
+
+        if (error) throw error
+        setSchools(data || [])
+      } catch (error) {
+        console.error('Error fetching schools:', error)
+      }
+    }
+
+    fetchSchools()
+  }, [supabase])
+
+  useEffect(() => {
+    setLoading(true)
+    fetchStudents()
+  }, [selectedSchool, selectedGrade])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this student?')) return
@@ -332,21 +400,85 @@ export default function StudentsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-md text-sm"
           />
+
+          <div className="flex gap-4">
+            {/* School Filter */}
+            <div className="flex-1">
+              <Label htmlFor="school-filter" className="text-sm font-medium mb-2 block">
+                School
+              </Label>
+              <Select value={selectedSchool} onValueChange={setSelectedSchool}>
+                <SelectTrigger id="school-filter">
+                  <SelectValue placeholder="All Schools" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Schools</SelectItem>
+                  {schools.map((school) => (
+                    <SelectItem key={school.id} value={school.id}>
+                      {school.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Grade Filter */}
+            <div className="flex-1">
+              <Label htmlFor="grade-filter" className="text-sm font-medium mb-2 block">
+                Grade
+              </Label>
+              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                <SelectTrigger id="grade-filter">
+                  <SelectValue placeholder="All Grades" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Grades</SelectItem>
+                  {['R', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((grade) => (
+                    <SelectItem key={grade} value={grade}>
+                      Grade {grade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Clear Filters Button */}
+            {(selectedSchool !== '__all__' || selectedGrade !== '__all__') && (
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedSchool('__all__')
+                    setSelectedGrade('__all__')
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </div>
+
           <DataTable
             columns={[
               {
                 header: 'Name',
-                accessor: (student: Student) => `${student.first_name} ${student.last_name}`,
+                accessor: (student: StudentWithDetails) => `${student.first_name} ${student.last_name}`,
               },
               { header: 'Student #', accessor: 'student_number' },
               { header: 'Grade', accessor: 'grade' },
               {
+                header: 'School',
+                accessor: (student: StudentWithDetails) => student.school_name || '—',
+              },
+              {
                 header: 'Parent',
-                accessor: (student: Student) => student.parent_name || '—',
+                accessor: (student: StudentWithDetails) => student.parent_name || '—',
               },
               {
                 header: 'Parent Email',
-                accessor: (student: Student) => student.parent_email || '—',
+                accessor: (student: StudentWithDetails) => student.parent_email || '—',
               },
             ]}
             data={filteredStudents}
