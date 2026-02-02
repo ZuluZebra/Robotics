@@ -31,8 +31,14 @@ const parseLocalDateString = (dateStr: string): Date => {
 
 export function AttendanceForm() {
   const { user, isAdmin, isTeacher, assignedClasses } = useAuth()
-  const [selectedSchool, setSelectedSchool] = useState('')
-  const [selectedClass, setSelectedClass] = useState('')
+  const [selectedSchool, setSelectedSchool] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return sessionStorage.getItem('attendance_selectedSchool') || ''
+  })
+  const [selectedClass, setSelectedClass] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return sessionStorage.getItem('attendance_selectedClass') || ''
+  })
   const [useTeacherMode, setUseTeacherMode] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
   const [studentStates, setStudentStates] = useState<
@@ -57,6 +63,20 @@ export function AttendanceForm() {
   >({})
 
   const supabase = createClient()
+
+  // Persist school selection to sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('attendance_selectedSchool', selectedSchool)
+    }
+  }, [selectedSchool])
+
+  // Persist class selection to sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('attendance_selectedClass', selectedClass)
+    }
+  }, [selectedClass])
 
   // Calculate available dates based on class schedule
   const calculateAvailableDates = (scheduleDays: string[]) => {
