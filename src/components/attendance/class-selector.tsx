@@ -54,16 +54,21 @@ export function ClassSelector({
     fetchSchools()
   }, [supabase])
 
-  // Handle teacher mode - use assigned classes directly
+  // Handle teacher mode - filter assigned classes by selected school
   useEffect(() => {
     if (teacherMode && assignedClasses.length > 0) {
-      setClasses(assignedClasses)
+      // Filter assigned classes by selected school if one is selected
+      const filteredClasses = selectedSchool
+        ? assignedClasses.filter(cls => cls.school_id === selectedSchool)
+        : assignedClasses
+
+      setClasses(filteredClasses)
       // Auto-select first class if only one exists
-      if (assignedClasses.length === 1 && !selectedClass) {
-        onClassChange(assignedClasses[0].id, assignedClasses[0])
+      if (filteredClasses.length === 1 && !selectedClass) {
+        onClassChange(filteredClasses[0].id, filteredClasses[0])
       }
     }
-  }, [teacherMode, assignedClasses, selectedClass, onClassChange])
+  }, [teacherMode, assignedClasses, selectedClass, selectedSchool, onClassChange])
 
   // Fetch classes when school changes (normal mode)
   useEffect(() => {
@@ -94,24 +99,22 @@ export function ClassSelector({
   }, [selectedSchool, supabase, teacherMode])
 
   return (
-    <div className={`grid gap-6 ${teacherMode ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-      {!teacherMode && (
-        <div className="space-y-2">
-          <Label htmlFor="school-select">School</Label>
-          <Select value={selectedSchool} onValueChange={onSchoolChange}>
-            <SelectTrigger id="school-select">
-              <SelectValue placeholder="Select a school..." />
-            </SelectTrigger>
-            <SelectContent>
-              {schools.map((school) => (
-                <SelectItem key={school.id} value={school.id}>
-                  {school.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+    <div className={`grid gap-6 grid-cols-1 md:grid-cols-2`}>
+      <div className="space-y-2">
+        <Label htmlFor="school-select">School</Label>
+        <Select value={selectedSchool} onValueChange={onSchoolChange}>
+          <SelectTrigger id="school-select">
+            <SelectValue placeholder="Select a school..." />
+          </SelectTrigger>
+          <SelectContent>
+            {schools.map((school) => (
+              <SelectItem key={school.id} value={school.id}>
+                {school.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="class-select">Class</Label>
